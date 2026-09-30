@@ -1,0 +1,94 @@
+\chapter{ทฤษฎีฟิสิกส์เคมีไฟฟ้าและสมการเนิร์นสต์}
+\label{chap:physics}
+
+\section{รากฐานทางทฤษฎีเคมีไฟฟ้าของหัววัด pH}
+การทำงานของหัววัดค่าความเป็นกรด-ด่างแบบเคมีไฟฟ้า (Potentiometric Glass Electrode) มีรากฐานมาจากหลักการทางอุณหพลศาสตร์ว่าด้วยความต่างศักย์ไฟฟ้าที่เกิดขึ้นบริเวณรอยต่อของเยื่อแก้วบางพิเศษ เมื่อสัมผัสกับสารละลายที่มีความเข้มข้นของไฮโดรเจนไอออน ($H^+$) แตกต่างกันระหว่างภายในและภายนอกโพรบ ศักย์ไฟฟ้ารวมของระบบเซลล์วัดถูกอธิบายด้วยสมการเนิร์นสต์ (Nernst Equation) ดังนี้
+
+\begin{formulabox}{สมการเนิร์นสต์สำหรับเซลล์วัดความเป็นกรด-ด่าง}
+\begin{equation}
+E = E^0 - S(T) \cdot (\text{pH} - 7)
+\label{eq:nernst}
+\end{equation}
+โดยที่
+\begin{itemize}
+    \item $E$ คือ ศักย์ไฟฟ้ารวมของเซลล์เคมีไฟฟ้า มีหน่วยเป็นมิลลิโวลต์ (mV)
+    \item $E^0$ คือ ศักย์ไฟฟ้าอ้างอิงมาตรฐานที่จุดสมมูล (Isopotential Point) มักกำหนดที่ระดับ pH 7.00
+    \item $S(T)$ คือ ค่าความชันเนิร์นสเตียน (Nernstian Slope Factor) ที่แปรผันตรงกับอุณหภูมิ
+\end{itemize}
+\end{formulabox}
+
+\section{ความชันเนิร์นสเตียนและการพึ่งพาอุณหภูมิ}
+ค่าความชัน $S(T)$ ทางทฤษฎีขึ้นอยู่กับค่าอุณหภูมิสัมบูรณ์ ($T$) ในหน่วยเคลวิน และค่าคงที่ทางฟิสิกส์พื้นฐาน ตามความสัมพันธ์
+
+\begin{equation}
+S(T) = \frac{2.3026 \cdot R \cdot T}{n \cdot F}
+\label{eq:slope}
+\end{equation}
+
+เมื่อ $R = 8.31446\text{ J}/(\text{mol}\cdot\text{K})$ คือค่าคงที่ของแก๊ส, $F = 96,485.3\text{ C/mol}$ คือค่าคงที่ฟาราเดย์ และ $n = 1$ คือจำนวนประจุของไฮโดรเจนไอออน ที่ระดับอุณหภูมิห้องมาตรฐาน $25\,^\circ\text{C}$ ($298.15\text{ K}$) จะได้ค่าความชันตามทฤษฎีเท่ากับ $59.16\text{ mV/pH}$ ทว่าในสภาพแปลงเกษตรจริงซึ่งอุณหภูมิดินผันผวนระหว่าง $20\,^\circ\text{C}$ ถึง $50\,^\circ\text{C}$ ค่าความชันจะเบี่ยงเบนไปอย่างมีนัยสำคัญ ดังแสดงในตารางที่ \ref{tab:nernst_slopes}
+
+\begin{table}[H]
+\caption{ค่าความชันตามสมการเนิร์นสต์ที่ระดับอุณหภูมิต่างๆ}
+\label{tab:nernst_slopes}
+\centering
+\begin{tabularx}{\textwidth}{cZZc}
+\toprule
+\textbf{อุณหภูมิ ($^\circ\text{C}$)} & \textbf{อุณหภูมิสัมบูรณ์ (K)} & \textbf{ความชัน $S(T)$ (mV/pH)} & \textbf{การเปลี่ยนแปลง (\%)} \\
+\midrule
+20.0 & 293.15 & 58.17 & -1.67\% \\
+25.0 & 298.15 & 59.16 & 0.00\% (อ้างอิง) \\
+30.0 & 303.15 & 60.15 & +1.67\% \\
+35.0 & 308.15 & 61.14 & +3.35\% \\
+40.0 & 313.15 & 62.14 & +5.04\% \\
+45.0 & 318.15 & 63.13 & +6.71\% \\
+50.0 & 323.15 & 64.12 & +8.38\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{ข้อจำกัดของหัววัดจริงและความคลาดเคลื่อนที่ไม่เป็นเชิงเส้น}
+ในทางปฏิบัติ โพรบเซนเซอร์จริงไม่ได้ตอบสนองเป็นเส้นตรงตามสมการเนิร์นสต์อย่างสมบูรณ์เนื่องจากปัจจัยทางกายภาพ 3 ประการ ได้แก่
+\begin{enumerate}
+    \item \textbf{ความคลาดเคลื่อนที่ช่วงความเป็นกรดและด่างจัด (Acid and Alkaline Errors):} ที่สภาวะ $\text{pH} < 4.0$ เยื่อแก้วจะดูดซับโมเลกุลของน้ำทำให้ค่าศักย์ไฟฟ้าต่ำกว่าจริง และที่สภาวะ $\text{pH} > 9.0$ ไอออนบวกของโลหะแอลคาไล (โดยเฉพาะโซเดียม $Na^+$) จะแทรกเข้าไปแย่งที่ไฮโดรเจนไอออน ส่งผลให้เกิดความไม่เป็นเชิงเส้น (Non-linear Curvature)
+    \item \textbf{การเลื่อนลอยของศักย์ไฟฟ้าอสมมาตร (Asymmetry Potential Drift):} ศักย์ไฟฟ้าระหว่างผิวแก้วด้านในและด้านนอกมีการเปลี่ยนแปลงตามอายุการใช้งานและการเกาะของอนุภาคดิน
+    \item \textbf{ผลของค่าสภาพนำไฟฟ้า (EC) และความชื้นสัมพัทธ์ในดิน:} ปริมาณเกลือละลายน้ำในดินส่งผลกระทบต่อความต้านทานสัมผัส (Junction Potential) บริเวณรอยต่อของของเหลว
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.88\textwidth}{!}{
+\begin{tikzpicture}
+    % Axes
+    \draw[-{Latex[length=3mm]}, line width=1.2pt] (0,0) -- (11,0) node[right]{\small ค่าความเป็นกรด-ด่าง (pH)};
+    \draw[-{Latex[length=3mm]}, line width=1.2pt] (5.5,-3.5) -- (5.5,3.5) node[above]{\small ศักย์ไฟฟ้าที่หัววัด $E$ (mV)};
+    
+    % pH marks
+    \foreach \x/\p in {1/1, 2.5/4, 5.5/7, 8.5/10, 10/13} {
+        \draw (\x,0.1) -- (\x,-0.1) node[below=2pt]{\small \p};
+    }
+    % Zero voltage mark
+    \node at (5.8,0.3) {\small 0 mV};
+
+    % Theoretical Nernst Lines at 20C, 25C, 50C
+    \draw[line width=1.2pt, color=rbruBlue, dashed] (1,3.2) -- (10,-2.1) node[below right, color=rbruBlue]{\small ทฤษฎีเนิร์นสต์ที่ 20$^\circ$C ($S=58.17$)};
+    \draw[line width=1.5pt, color=rbruEmerald] (1,3.55) -- (10,-2.35) node[right, color=rbruEmerald]{\small ทฤษฎีเนิร์นสต์ที่ 25$^\circ$C ($S=59.16$)};
+    \draw[line width=1.2pt, color=rbruAmber, dashed] (1,4.1) -- (10,-2.9) node[above right, color=rbruAmber]{\small ทฤษฎีเนิร์นสต์ที่ 50$^\circ$C ($S=64.12$)};
+
+    % Real Non-linear Sensor Curve with Acid & Alkaline Errors
+    \draw[line width=2pt, color=red!80!black] 
+        (1,2.8) .. controls (2.5,2.6) and (4.0,1.8) .. (5.5,0.0)
+        .. controls (7.0,-1.6) and (8.5,-2.2) .. (10,-2.4)
+        node[right, color=red!80!black]{\textbf{เซนเซอร์จริง (มี Acid/Alkaline Error)}};
+
+    % Annotations
+    \draw[{Latex}-, line width=1pt, color=red!80!black] (1.8,2.7) -- (1.8,3.6) node[above]{\small Acid Error (pH $<$ 4.0)};
+    \draw[{Latex}-, line width=1pt, color=red!80!black] (9.2,-2.3) -- (9.2,-3.3) node[below]{\small Alkaline Error (pH $>$ 9.0)};
+\end{tikzpicture}
+}
+\caption{เปรียบเทียบการตอบสนองเชิงฟิสิกส์ระหว่างทฤษฎีเนิร์นสต์กับเส้นตอบสนองที่ไม่เป็นเชิงเส้นของเซนเซอร์จริง}
+\label{fig:nernst_comparison}
+\end{figure}
+
+จากข้อจำกัดดังกล่าว การใช้วิธีดั้งเดิมที่แปลงค่าแบบเส้นตรง $pH_{trad} = 7.0 - E/S(T)$ จึงไม่สามารถให้ค่าที่แม่นยำเพียงพอ จึงจำเป็นต้องใช้แบบจำลองปัญญาประดิษฐ์พหุนามที่ไม่เป็นเชิงเส้นในการแมปปิ้งค่ากลับคืนอย่างชาญฉลาด
+
+\clearpage

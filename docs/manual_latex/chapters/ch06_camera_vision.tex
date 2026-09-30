@@ -1,0 +1,61 @@
+\chapter{ระบบกล้องสมาร์ทวิชันตรวจวิเคราะห์หน้าดิน}
+\label{chap:camera_vision}
+
+\section{ความสำคัญของหลักฐานภาพถ่ายเชิงประจักษ์ (Visual Ground Truth)}
+ในการสำรวจและวินิจฉัยคุณภาพดินภาคสนาม ข้อมูลตัวเลขพารามิเตอร์ทางเคมีเพียงอย่างเดียวมักไม่เพียงพอต่อการตัดสินใจเชิงเกษตรแม่นยำ เนื่องจากลักษณะทางกายภาพของหน้าดิน (เช่น สีของดิน ความชื้นผิวหน้าดิน โครงสร้างเม็ดดิน และการมีอยู่ของอินทรียวัตถุ) ล้วนเป็นดัชนีชี้วัดความอุดมสมบูรณ์ของดินที่สำคัญ
+
+ระบบ SoilpHTxAI จึงได้รับการพัฒนาโมดูลกล้องสมาร์ทวิชัน (Smart Soil Vision Camera Module) ขึ้น เพื่อทำหน้าที่บันทึกภาพถ่ายตัวอย่างดินความละเอียดสูง พร้อมการผสานข้อมูลการวัดและพิกัดภูมิศาสตร์ลงบนภาพแบบเรียลไทม์
+
+\section{องค์ประกอบหลักของระบบกล้อง}
+หน้าจอระบบกล้อง (\texttt{SoilCameraScreen}) ประกอบด้วย 5 องค์ประกอบทางวิศวกรรมที่สำคัญ ได้แก่
+\begin{enumerate}
+    \item \textbf{แผงแสดงข้อมูลสดลอยซ้อนทับ (Live Telemetry HUD):} แสดงค่าเซนเซอร์สดที่อ่านได้จากหัววัด ได้แก่ ค่า pH ชดเชยด้วย AI, ศักย์ไฟฟ้า (mV), อุณหภูมิดิน ($^\circ\text{C}$), และความชื้นสัมพัทธ์ในดิน (\%) ซ้อนทับอยู่ด้านบนของภาพกล้องแบบเรียลไทม์
+    \item \textbf{พิกัดดาวเทียมจริง (Satellite GPS Geotagging):} เชื่อมต่อชิปรับสัญญาณ GPS ของสมาร์ทโฟนผ่านแพ็กเกจ \texttt{geolocator} เพื่อดึงค่าละติจูดและลองจิจูดจริงทศนิยม 6 ตำแหน่ง พร้อมระดับความสูงจากระดับน้ำทะเลปานกลาง (Altitude) แสดงกำกับบนภาพถ่าย
+    \item \textbf{กรอบเล็งเป้ากึ่งกลางจอ (Soil Sample Focus Reticle):} แสดงกรอบสี่เหลี่ยมโปร่งแสงพร้อมเป้าเล็งกึ่งกลางหน้าจอ เพื่อช่วยให้ผู้ใช้จัดวางโพรบหรือตัวอย่างดินให้อยู่ในระนาบและระยะโฟกัสที่เหมาะสม
+    \item \textbf{ระบบควบคุมแสงและเลนส์ (Torch and Lens Controls):} มีปุ่มเปิด-ปิดไฟฉาย (Torch Mode) เพื่อช่วยส่องสว่างหน้าดินในแปลงเกษตรที่มีแสงสว่างไม่เพียงพอหรือในหลุมตรวจวัด และมีปุ่มสลับระหว่างกล้องหน้าและกล้องหลัง
+    \item \textbf{กล่องยืนยันการบันทึกข้อมูล (Capture Confirmation Dialog):} เมื่อผู้ใช้กดปุ่มชัตเตอร์ ระบบจะหยุดภาพชั่วคราวและเปิดกล่องข้อความให้ผู้ใช้ตั้งชื่อรหัสตัวอย่างดิน (Sample ID) พร้อมบันทึกภาพถ่ายและค่าเมทาดาทาลงในหน่วยความจำของอุปกรณ์อย่างปลอดภัย
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.88\textwidth}{!}{
+\begin{tikzpicture}
+    % Camera Viewfinder Frame
+    \draw[rounded corners=12pt, fill=black!90, draw=rbruGold, line width=2pt] (-5,-3.5) rectangle (5,3.5);
+    
+    % Mock Soil Background
+    \fill[rounded corners=10pt, fill=rbruDarkGreen!20] (-4.8,-3.3) rectangle (4.8,3.3);
+
+    % HUD Top Telemetry Bar
+    \draw[rounded corners=6pt, fill=black!75, draw=rbruEmerald, line width=1pt] (-4.5,2.0) rectangle (4.5,3.0);
+    \node at (-3.2,2.5) {\fontsize{9}{11}\selectfont\bfseries\color{white} pH: \textcolor{rbruEmerald}{5.82}};
+    \node at (-1.1,2.5) {\fontsize{9}{11}\selectfont\color{white} mV: \textcolor{rbruGold}{69.8}};
+    \node at (1.0,2.5) {\fontsize{9}{11}\selectfont\color{white} Temp: 28.5$^\circ$C};
+    \node at (3.2,2.5) {\fontsize{9}{11}\selectfont\color{white} Moist: \textcolor{rbruCyan}{65.4\%}};
+
+    % GPS Coordinate Tag
+    \draw[rounded corners=4pt, fill=black!70] (-4.5,1.2) rectangle (4.5,1.75);
+    \node at (0,1.48) {\fontsize{8}{10}\selectfont\color{rbruGold} GPS: 12.671920$^\circ$N, 102.193240$^\circ$E | Alt: 42.5 m | สวนทุเรียนมะขาม};
+
+    % Central Reticle Target
+    \draw[line width=1.5pt, color=rbruEmerald, dashed] (-2,-1.5) rectangle (2,0.8);
+    \draw[line width=1pt, color=rbruEmerald] (-0.3,-0.35) -- (0.3,-0.35);
+    \draw[line width=1pt, color=rbruEmerald] (0,-0.65) -- (0,-0.05);
+    \node at (0,0.5) {\fontsize{8}{10}\selectfont\color{rbruEmerald} กรอบเล็งตำแหน่งตัวอย่างดิน (Soil Reticle)};
+
+    % Bottom Control Buttons
+    % Flash button
+    \draw[circle, fill=white!20, draw=white] (-3,-2.6) circle (0.5);
+    \node at (-3,-2.6) {\fontsize{10}{12}\selectfont\color{white} \textbf{Flash}};
+    % Shutter button
+    \draw[circle, fill=white, draw=rbruEmerald, line width=2.5pt] (0,-2.6) circle (0.65);
+    % Switch camera button
+    \draw[circle, fill=white!20, draw=white] (3,-2.6) circle (0.5);
+    \node at (3,-2.6) {\fontsize{10}{12}\selectfont\color{white} \textbf{Flip}};
+\end{tikzpicture}
+}
+\caption{การออกแบบเลย์เอาต์หน้าจอและองค์ประกอบ HUD ของระบบกล้อง Smart Soil Vision Camera}
+\label{fig:camera_hud}
+\end{figure}
+
+\clearpage

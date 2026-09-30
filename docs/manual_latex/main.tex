@@ -1,0 +1,41 @@
+\documentclass[11pt,a4paper,oneside]{book}
+
+\usepackage{styles/rbru_manual_style}
+
+\begin{document}
+
+% Frontmatter
+\frontmatter
+\input{frontmatter/cover}
+\input{frontmatter/preface}
+\input{frontmatter/toc}
+
+% Mainmatter
+\mainmatter
+\input{chapters/ch01_overview}
+\input{chapters/ch02_physics_nernst}
+\input{chapters/ch03_hardware_modbus}
+\input{chapters/ch04_edge_ml}
+\input{chapters/ch05_flutter_app}
+\input{chapters/ch06_camera_vision}
+\input{chapters/ch07_cloud_sync}
+\input{chapters/ch08_field_validation}
+
+% Appendices
+\appendix
+\renewcommand{\chaptertitlename}{ภาคผนวก}
+\renewcommand{\thechapter}{ก}
+\input{appendices/appendix_a_firmware}
+
+\renewcommand{\thechapter}{ข}
+\input{appendices/appendix_b_edge_trainer}
+
+\renewcommand{\thechapter}{ค}
+\input{appendices/appendix_c_dataset}
+
+% Backmatter
+\backmatter
+\input{backmatter/references}
+\input{backmatter/biography}
+
+\end{document}

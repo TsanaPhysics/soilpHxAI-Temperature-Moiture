@@ -1,0 +1,264 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{rbru_manual_style}[2026/10/01 v1.0 RBRU Academic Manual Style]
+
+% Geometry: RBRU Academic Margin Standard (Left 1.5", Right 1.0", Top 1.5", Bottom 1.0")
+\RequirePackage[
+    a4paper,
+    top=38.1mm,
+    bottom=25.4mm,
+    left=38.1mm,
+    right=25.4mm,
+    headheight=18pt,
+    footskip=12mm
+]{geometry}
+
+% Thai Language and Fonts via fontspec & xecjk / polyglossia
+\RequirePackage{fontspec}
+\defaultfontfeatures{Mapping=tex-text}
+
+\setmainfont{TH Sarabun New}
+
+\XeTeXlinebreaklocale "th_TH"
+\XeTeXlinebreakskip = 0pt plus 1.5pt minus 0.5pt
+\setlength{\emergencystretch}{2.5em}
+
+% Indentation: 1 Tab = 1.25 cm
+\RequirePackage{enumitem}
+\RequirePackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{4pt plus 1pt minus 1pt}
+
+% Mathematics & Physics
+\RequirePackage{amsmath,amssymb,amsfonts,mathtools}
+\RequirePackage{bm}
+
+% Color Palette (RBRU Royal Blue, Emerald Green, Gold, Slate)
+\RequirePackage[x11names,svgnames,table]{xcolor}
+\definecolor{rbruNavy}{HTML}{0D2B45}
+\definecolor{rbruBlue}{HTML}{1A5276}
+\definecolor{rbruCyan}{HTML}{17A2B8}
+\definecolor{rbruEmerald}{HTML}{00A86B}
+\definecolor{rbruDarkGreen}{HTML}{145A32}
+\definecolor{rbruGold}{HTML}{D4AF37}
+\definecolor{rbruAmber}{HTML}{D68910}
+\definecolor{rbruSlate}{HTML}{2C3E50}
+\definecolor{rbruBg}{HTML}{F8F9FA}
+\definecolor{rbruCodeBg}{HTML}{F4F6F7}
+
+% Graphics & TikZ
+\RequirePackage{graphicx}
+\RequirePackage{tikz}
+\usetikzlibrary{shapes,arrows.meta,positioning,calc,fit,backgrounds,shadows,decorations.pathreplacing}
+
+% Tables: Booktabs & Tabularx
+\RequirePackage{booktabs}
+\RequirePackage{tabularx}
+\RequirePackage{multirow}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{Z}{>{\centering\arraybackslash}X}
+
+% Floats & Placement Protection
+\RequirePackage{float}
+\RequirePackage{needspace}
+\RequirePackage[section]{placeins}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+% Captions Formatting: Bold Label, Normal Text, No Colon, Table Flush Right
+\RequirePackage{caption}
+\DeclareCaptionLabelSeparator{thaisep}{\quad}
+\captionsetup{labelsep=thaisep}
+\captionsetup[table]{
+    position=top,
+    skip=6pt,
+    labelfont={bf,color=rbruNavy},
+    textfont={normalfont},
+    labelsep=thaisep,
+    justification=raggedleft,
+    singlelinecheck=false
+}
+\captionsetup[figure]{
+    position=bottom,
+    skip=8pt,
+    labelfont={bf,color=rbruNavy},
+    textfont={normalfont},
+    labelsep=thaisep,
+    justification=centering
+}
+
+\renewcommand{\figurename}{\mbox{ภาพที่}}
+\renewcommand{\tablename}{\mbox{ตารางที่}}
+
+\AtBeginDocument{
+    \gdef\figurename{\mbox{ภาพที่}}
+    \gdef\tablename{\mbox{ตารางที่}}
+    \captionsetup[figure]{name={\mbox{ภาพที่}}}
+    \captionsetup[table]{name={\mbox{ตารางที่}}}
+}
+
+% Fancy Headers and Footers
+\RequirePackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE]{\color{rbruSlate}\small\leftmark}
+\fancyhead[LO]{\color{rbruSlate}\small\rightmark}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\renewcommand{\chaptermark}[1]{%
+    \markboth{%
+        \ifnum \c@secnumdepth >\m@ne
+            \if@mainmatter
+                \chaptertitlename\ \thechapter\quad
+            \fi
+        \fi
+        #1%
+    }{}%
+}
+\renewcommand{\sectionmark}[1]{%
+    \markright{\thesection\quad #1}%
+}
+
+% TColorBox Setup for Academic Banners and Code Boxes
+\RequirePackage[many]{tcolorbox}
+\tcbuselibrary{skins,breakable,listings}
+
+% Chapter Banner
+\newcommand{\rbruchapterbanner}[1]{%
+    \begin{tcolorbox}[
+        enhanced,
+        width=\textwidth,
+        arc=3mm,
+        boxrule=1pt,
+        colframe=rbruNavy,
+        interior style={left color=rbruNavy!98!black, right color=rbruBlue!90!black},
+        borderline east={4pt}{0pt}{rbruGold},
+        left=15pt, right=15pt, top=14pt, bottom=14pt,
+        shadow={0mm}{0mm}{0mm}{black}
+    ]
+        \raggedleft
+        {\fontsize{36}{42}\selectfont\bfseries\color{white} \chaptertitlename\ \thechapter \par}
+        \vspace{4pt}
+        {\color{rbruGold}\rule{0.55\textwidth}{2pt}\par}
+        \vspace{6pt}
+        {\fontsize{22}{28}\selectfont\bfseries\color{white} #1 \par}
+    \end{tcolorbox}
+    \vspace{10pt}
+}
+
+% Section Titles Formatting (No colons, dynamic indent)
+\RequirePackage{titlesec}
+\titleformat{\chapter}[block]{\normalfont}{}{0pt}{\rbruchapterbanner}
+\newcommand{\rbruunnumberedbanner}[1]{%
+    \begin{tcolorbox}[
+        enhanced,
+        width=\textwidth,
+        arc=3mm,
+        boxrule=1pt,
+        colframe=rbruNavy,
+        interior style={left color=rbruNavy!98!black, right color=rbruBlue!90!black},
+        borderline east={4pt}{0pt}{rbruGold},
+        left=15pt, right=15pt, top=14pt, bottom=14pt
+    ]
+        \centering
+        {\fontsize{24}{30}\selectfont\bfseries\color{white} #1 \par}
+    \end{tcolorbox}%
+    \vspace{10pt}%
+}
+\titleformat{name=\chapter,numberless}[block]{\normalfont}{}{0pt}{\rbruunnumberedbanner}
+
+\titlespacing*{\chapter}{0pt}{0pt}{16pt}
+
+\titleformat{\section}{\normalfont\fontsize{16}{20}\selectfont\bfseries\color{rbruNavy}}{\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{16pt plus 3pt minus 2pt}{8pt plus 2pt minus 1pt}
+
+\titleformat{\subsection}{\normalfont\fontsize{14}{18}\selectfont\bfseries\color{rbruBlue}}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{1.25cm}{12pt plus 3pt minus 2pt}{6pt plus 2pt minus 1pt}
+
+\titleformat{\subsubsection}{\normalfont\fontsize{13}{16}\selectfont\bfseries\color{rbruSlate}}{\thesubsubsection}{1em}{}
+\titlespacing*{\subsubsection}{2.50cm}{10pt plus 2pt minus 2pt}{4pt plus 1pt minus 1pt}
+
+% Callout Boxes
+\newtcolorbox{academicbox}[2][]{
+    enhanced,
+    breakable,
+    colback=rbruBg,
+    colframe=rbruNavy,
+    fonttitle=\bfseries\color{white},
+    coltitle=white,
+    colbacktitle=rbruNavy,
+    title={#2},
+    arc=2mm,
+    boxrule=0.8pt,
+    leftrule=4mm,
+    top=6pt, bottom=6pt, left=10pt, right=10pt,
+    before skip=8pt, after skip=8pt,
+    #1
+}
+
+\newtcolorbox{formulabox}[2][]{
+    enhanced,
+    colback=white,
+    colframe=rbruGold,
+    fonttitle=\bfseries\color{rbruNavy},
+    coltitle=rbruNavy,
+    colbacktitle=rbruGold!25,
+    title={#2},
+    arc=2mm,
+    boxrule=1pt,
+    leftrule=4mm,
+    top=6pt, bottom=6pt, left=10pt, right=10pt,
+    before skip=8pt, after skip=8pt,
+    #1
+}
+
+% Code Listing Box
+\RequirePackage{listings}
+\lstset{
+    basicstyle=\ttfamily\fontsize{9}{12}\selectfont,
+    keywordstyle=\color{rbruBlue}\bfseries,
+    stringstyle=\color{rbruDarkGreen},
+    commentstyle=\color{gray}\itshape,
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    stepnumber=1,
+    numbersep=8pt,
+    backgroundcolor=\color{rbruCodeBg},
+    frame=none,
+    tabsize=2,
+    breaklines=true,
+    breakatwhitespace=true,
+    showspaces=false,
+    showstringspaces=false
+}
+
+\newtcblisting{codebox}[2][]{
+    enhanced,
+    breakable,
+    colback=rbruCodeBg,
+    colframe=rbruSlate,
+    fonttitle=\bfseries\fontsize{10}{13}\selectfont\color{white},
+    coltitle=white,
+    colbacktitle=rbruSlate,
+    title={#2},
+    arc=2mm,
+    boxrule=0.8pt,
+    top=4pt, bottom=4pt, left=6pt, right=6pt,
+    before skip=8pt, after skip=8pt,
+    listing only,
+    listing options={#1}
+}
+
+% Hyperref Setup
+\RequirePackage[
+    colorlinks=true,
+    linkcolor=rbruNavy,
+    citecolor=rbruDarkGreen,
+    urlcolor=rbruBlue,
+    bookmarksnumbered=true,
+    pdfstartview=FitH
+]{hyperref}
+
+\endinput

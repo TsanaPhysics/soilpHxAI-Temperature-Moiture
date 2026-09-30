@@ -1,0 +1,69 @@
+\chapter{ซอร์สโค้ดเฟิร์มแวร์ C++ สำหรับไมโครคอนโทรลเลอร์ ESP32}
+\label{app:firmware}
+
+รหัสต้นแบบเฟิร์มแวร์ภาษา C++ สำหรับนำไปคอมไพล์และแฟลชลงสู่บอร์ดไมโครคอนโทรลเลอร์ ESP32 หรือ ESP32-S3 เพื่อทำหน้าที่เป็นอุปกรณ์ประมวลผลสัญญาณอิสระ (Standalone IoT Edge Node) ที่ฝังค่าน้ำหนักของแบบจำลอง AI ล่าสุดไว้ในชิป
+
+\begin{codebox}[language=C++]{เฟิร์มแวร์ ESP32 C++ พร้อมฟังก์ชันอนุมานผล AI}
+// ============================================================================
+// SoilpHTxAI - Embedded AI Error Compensation Engine for ESP32 / Arduino
+// Project: Development of a High-Accuracy Field-Portable Soil pH Meter Prototype
+// Funding: Rambhai Barni Rajabhat University Research Fund 2569
+// Principal Investigators:
+//   Tanapat Tirawoot (50%), Asst.Prof.Dr. Chewa Thassana (30%),
+//   Assoc.Prof.Dr. Nuntaporn Moonrungsee (10%), Assoc.Prof.Dr. Nipat Piamarun (10%)
+// ============================================================================
+
+#include <Arduino.h>
+#include <math.h>
+
+// AI Model Polynomial Coefficients (Trained via On-Device OLS Regression)
+static const float C_BIAS = 6.931715f;
+static const float C_E    = -0.03481958f;
+static const float C_T    = 0.00956416f;
+static const float C_ET   = -3.47704e-05f;
+static const float C_E2   = 7.53126e-06f;
+static const float C_T2   = -1.62641e-05f;
+
+// Forward Inference Function
+float predictAiCompensatedPh(float potentialMv, float tempC) {
+  float e = potentialMv;
+  float t = tempC;
+  
+  float phPred = C_BIAS +
+                 (C_E * e) +
+                 (C_T * t) +
+                 (C_ET * e * t) +
+                 (C_E2 * e * e) +
+                 (C_T2 * t * t);
+
+  if (phPred < 0.0f) phPred = 0.0f;
+  if (phPred > 14.0f) phPred = 14.0f;
+  return phPred;
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("SoilpHTxAI Embedded Edge AI Firmware Initialized");
+}
+
+void loop() {
+  // Read analog potential from pH probe (GPIO 34) and Temperature (DS18B20)
+  float rawMv = 118.5f; // Replace with analogReadMilliVolts(34)
+  float tempC = 28.5f;  // Replace with sensors.getTempCByIndex(0)
+  
+  float phAI = predictAiCompensatedPh(rawMv, tempC);
+  
+  // Format JSON Output
+  Serial.print("{\"potential_mv\":");
+  Serial.print(rawMv);
+  Serial.print(",\"temperature_c\":");
+  Serial.print(tempC);
+  Serial.print(",\"ai_ph\":");
+  Serial.print(phAI, 2);
+  Serial.println("}");
+  
+  delay(1000);
+}
+\end{codebox}
+
+\clearpage

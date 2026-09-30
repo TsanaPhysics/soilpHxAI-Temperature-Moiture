@@ -1,0 +1,55 @@
+\chapter{ขั้นตอนและสถาปัตยกรรมการพัฒนาแอปพลิเคชัน}
+\label{chap:flutter_app}
+
+\section{สถาปัตยกรรมซอฟต์แวร์แบบ Clean MVVM}
+การพัฒนาแอปพลิเคชัน SoilpHTxAI ยึดถือหลักการออกแบบสถาปัตยกรรมแบบจำลอง-มุมมอง-ตัวแบบมุมมอง (Model-View-ViewModel หรือ MVVM) ร่วมกับการบริหารจัดการสถานะ (State Management) ด้วยแพ็กเกจ \texttt{Provider} ทำให้โค้ดมีความเป็นโมดูลาร์ แยกส่วนตรรกะการประมวลผล (Business Logic) ออกจากส่วนการแสดงผล (User Interface) อย่างชัดเจน
+
+\begin{figure}[H]
+\centering
+\resizebox{0.88\textwidth}{!}{
+\begin{tikzpicture}[
+    layer/.style={rectangle, draw=rbruNavy, fill=white, rounded corners=6pt, text width=11cm, minimum height=1.4cm, line width=1pt, drop shadow={opacity=0.15}},
+    arrow/.style={draw=rbruEmerald, {Latex[length=3mm]}-{Latex[length=3mm]}, line width=1.5pt}
+]
+    \node [layer, fill=rbruNavy!10] (ui) {
+        \textbf{Presentation Layer (Views \& Widgets)}\\
+        \small LiveMonitorScreen, DatasetScreen, HypothesisScreen, FieldSurveyScreen, SoilCameraScreen
+    };
+    \node [layer, below=1.2cm of ui, fill=rbruCyan!10] (vm) {
+        \textbf{ViewModel Layer (State Management \& Reactive Streams)}\\
+        \small SoilPhtViewModel, ChangeNotifier, WidgetsBindingObserver (Port Lifecycle)
+    };
+    \node [layer, below=1.2cm of vm, fill=rbruEmerald!10] (services) {
+        \textbf{Business \& Hardware Service Layer}\\
+        \small UsbSoilSensorService, EdgePhModelTrainer, NernstPhysicsEngine, CloudSyncService
+    };
+    \node [layer, below=1.2cm of services, fill=rbruGold!15] (models) {
+        \textbf{Core Domain Models Layer}\\
+        \small CalibrationPoint, SoilDataPoint, PhSensorReading, HypothesisTestResult
+    };
+
+    \draw [arrow] (ui) -- (vm);
+    \draw [arrow] (vm) -- (services);
+    \draw [arrow] (services) -- (models);
+\end{tikzpicture}
+}
+\caption{สถาปัตยกรรมซอฟต์แวร์แบบ Clean MVVM ของแอปพลิเคชัน SoilpHTxAI}
+\label{fig:mvvm_architecture}
+\end{figure}
+
+\section{รายละเอียดหน้าจอหลักทั้ง 5 เมนู}
+แอปพลิเคชันมีแถบนำทางหลักด้านล่าง (Bottom Navigation Bar) แบ่งเป็น 5 เมนูหลัก ได้แก่
+\begin{enumerate}
+    \item \textbf{เมนูที่ 1: ตรวจวัดสด (Live Monitor):} แสดงผลค่าเซนเซอร์สดด้วยมาตรวัดดิจิทัลขนาดใหญ่ แสดงค่า pH ชดเชยด้วย AI เทียบกับค่าสูตรเนิร์นสต์ดั้งเดิมแบบเคียงข้างกัน แสดงสภาพแวดล้อมดิน (ศักย์ไฟฟ้า อุณหภูมิ ความชื้น EC) และผลวินิจฉัยสภาพดินสำหรับทุเรียน พร้อมปุ่มเข้าถึงกล้องและพิกัดดาวเทียม
+    \item \textbf{เมนูที่ 2: ชุดข้อมูล Lab (Dataset Screen):} แสดงตารางข้อมูลสอบเทียบในห้องปฏิบัติการ 168 จุดตามเงื่อนไขสารละลายบัฟเฟอร์มาตรฐาน มีระบบตัวกรอง Train (70\%), Val (15\%), และ Test (15\%) พร้อมปุ่มเปิดระบบฝึกฝนโมเดล AI บนเครื่อง (Edge ML Trainer) และปุ่มส่งออกข้อมูลสู่ Google Drive
+    \item \textbf{เมนูที่ 3: สมมติฐาน H0 (Hypothesis Testing):} ประมวลผลสถิติอนุมาน Paired $t$-test ทดสอบสมมติฐานการวิจัยระหว่าง RMSE ของ AI กับวิธีดั้งเดิม พร้อมแผนภาพเปรียบเทียบการลดทอนความคลาดเคลื่อน
+    \item \textbf{เมนูที่ 4: สำรวจดิน (Field Survey):} จัดเก็บและแสดงผลตัวอย่างดิน 30 แปลงในเขตจังหวัดจันทบุรีและตราด วิเคราะห์ความต้องการใส่ปูนโดโลไมต์ปรับปรุงดิน และรองรับการบันทึกตัวอย่างดินใหม่ด้วยพิกัด GPS จริง
+    \item \textbf{เมนูที่ 5: ESP32 / ทุน (Project \& Firmware):} นำเสนอข้อมูลทุนวิจัย รายนามคณะผู้วิจัยและสัดส่วนภาระงาน พร้อมเครื่องมือสร้างโค้ดเฟิร์มแวร์ C++ สำหรับไมโครคอนโทรลเลอร์ ESP32
+\end{enumerate}
+
+\section{การรับประกันเลย์เอาต์ยืดหยุ่น (Zero RenderFlex Overflow Guarantee)}
+เนื่องจากสมาร์ทโฟนของเกษตรกรและนักวิจัยมีขนาดหน้าจอและความละเอียดที่หลากหลาย แอปพลิเคชันจึงได้รับการออกแบบเลย์เอาต์แบบยืดหยุ่น (Adaptive Responsive Layout) โดยใช้ \texttt{Responsive} utility คำนวณขนาดการ์ด ระยะขอบ และการตัดทอนข้อความอย่างปลอดภัย
+
+ทุกหน้าจอผ่านการทดสอบอัตโนมัติ (Automated Widget Testing) บนความละเอียดหน้าจอจำลอง 4 ระดับมาตรฐาน ได้แก่ $320 \times 568$ (iPhone SE), $360 \times 640$ (Android ขนาดเล็ก), $393 \times 852$ (สมาร์ทโฟนมาตรฐาน), และ $412 \times 915$ (สมาร์ทโฟนหน้าจอยาว) โดยยืนยันผลการทดสอบผ่าน 100\% ปราศจากปัญหาหน้าจอล้นขอบกระดาษในทุกกรณี
+
+\clearpage

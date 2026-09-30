@@ -1,0 +1,71 @@
+\chapter{ซอร์สโค้ด Pure Dart Edge ML Trainer}
+\label{app:edge_trainer}
+
+รหัสต้นแบบภาษา Dart สำหรับการฝึกฝนแบบจำลอง OLS Normal Equation Solver และการขจัดแบบเกาส์เซียนบนสมาร์ทโฟนโดยตรง
+
+\begin{codebox}[language=Java]{ซอร์สโค้ด EdgePhModelTrainer ในภาษา Dart}
+import 'dart:math';
+import '../core/models/calibration_point.dart';
+
+class EdgePhModelTrainer {
+  static Future<EdgeMlTrainingResult> trainModel({
+    required List<CalibrationPoint> trainingPoints,
+  }) async {
+    final Stopwatch stopwatch = Stopwatch()..start();
+    const int numFeatures = 6;
+    final int n = trainingPoints.length;
+
+    // Construct Normal Equation Matrix A = X^T * X and Vector B = X^T * Y
+    final List<List<double>> A = List.generate(
+      numFeatures, (_) => List.filled(numFeatures, 0.0)
+    );
+    final List<double> B = List.filled(numFeatures, 0.0);
+
+    for (final p in trainingPoints) {
+      final double e = p.potentialMv;
+      final double t = p.temperatureC;
+      final double y = p.standardPh;
+      final List<double> x = [1.0, e, t, e * t, e * e, t * t];
+
+      for (int i = 0; i < numFeatures; i++) {
+        for (int j = 0; j < numFeatures; j++) {
+          A[i][j] += x[i] * x[j];
+        }
+        B[i] += x[i] * y;
+      }
+    }
+
+    // Solve system of linear equations A * W = B
+    final List<double> weights = _solveLinearSystem(A, B, numFeatures);
+
+    // Compute evaluation metrics (R2, RMSE, MAE)
+    double sumSqError = 0.0, sumAbsError = 0.0, sumY = 0.0;
+    for (final p in trainingPoints) sumY += p.standardPh;
+    final double meanY = sumY / n;
+    double ssTotal = 0.0;
+
+    for (final p in trainingPoints) {
+      final double yTrue = p.standardPh;
+      final double yPred = predictWithWeights(weights, p.potentialMv, p.temperatureC);
+      final double err = yTrue - yPred;
+      sumSqError += err * err;
+      sumAbsError += err.abs();
+      ssTotal += pow(yTrue - meanY, 2);
+    }
+
+    stopwatch.stop();
+    return EdgeMlTrainingResult(
+      weights: weights,
+      r2: max(0.0, 1.0 - (sumSqError / ssTotal)),
+      rmse: sqrt(sumSqError / n),
+      mae: sumAbsError / n,
+      sampleCount: n,
+      trainingDuration: stopwatch.elapsed,
+      trainedAt: DateTime.now(),
+      status: 'Success (100% OLS Exact Convergence)',
+    );
+  }
+}
+\end{codebox}
+
+\clearpage

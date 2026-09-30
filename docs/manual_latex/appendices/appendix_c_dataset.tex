@@ -1,0 +1,48 @@
+\chapter{ตัวอย่างชุดข้อมูลสอบเทียบและแปลงสำรวจดินจริง}
+\label{app:dataset}
+
+\section{ตัวอย่างชุดข้อมูลสอบเทียบในห้องปฏิบัติการ (Laboratory Standard Dataset)}
+ตารางที่ \ref{tab:sample_cal_data} แสดงตัวอย่างข้อมูลจากการสอบเทียบในห้องปฏิบัติการควบคุมอุณหภูมิ ด้วยสารละลายบัฟเฟอร์มาตรฐาน NIST-traceable (pH 4.01, 7.00, 10.01 ณ อุณหภูมิ 20 - 50 $^\circ\text{C}$)
+
+\begin{table}[H]
+\caption{ตัวอย่างจุดข้อมูลสอบเทียบ 8 ตัวอย่างแรกในห้องปฏิบัติการ}
+\label{tab:sample_cal_data}
+\centering
+\begin{tabularx}{\textwidth}{cccZZZc}
+\toprule
+\textbf{รหัสตัวอย่าง} & \textbf{ศักย์ไฟฟ้า (mV)} & \textbf{อุณหภูมิ ($^\circ\text{C}$)} & \textbf{pH มาตรฐาน} & \textbf{pH เนิร์นสต์} & \textbf{pH ทำนาย AI} & \textbf{ชุดข้อมูล} \\
+\midrule
+CAL-0001 & 176.4 & 20.0 & 4.01 & 3.97 & 4.01 & Train \\
+CAL-0002 & 177.1 & 20.0 & 4.01 & 3.95 & 4.02 & Train \\
+CAL-0003 & 175.8 & 20.0 & 4.01 & 3.98 & 4.00 & Val \\
+CAL-0004 & 180.2 & 25.0 & 4.01 & 3.95 & 4.01 & Train \\
+CAL-0005 & 181.0 & 25.0 & 4.01 & 3.94 & 4.01 & Test \\
+CAL-0006 & -0.2 & 25.0 & 7.00 & 7.00 & 7.00 & Train \\
+CAL-0007 & -0.5 & 25.0 & 7.00 & 7.01 & 7.00 & Train \\
+CAL-0008 & -177.5 & 25.0 & 10.01 & 10.00 & 10.01 & Train \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{ตัวอย่างข้อมูลแปลงสำรวจดินสวนทุเรียนภาคตะวันออก}
+ตารางที่ \ref{tab:sample_field_data} แสดงตัวอย่างการสำรวจดินในแปลงปลูกจริง 6 แปลงแรก พร้อมพิกัด GPS ละเอียด
+
+\begin{table}[H]
+\caption{ตัวอย่างข้อมูลแปลงสำรวจดินสวนทุเรียน 6 แปลงแรกในเขตจันทบุรี-ตราด}
+\label{tab:sample_field_data}
+\centering
+\begin{tabularx}{\textwidth}{p{2.5cm}cZZc}
+\toprule
+\textbf{รหัสแปลง} & \textbf{พิกัดดาวเทียมจริง (GPS)} & \textbf{pH ดั้งเดิม} & \textbf{pH ชดเชย AI} & \textbf{ปูนโดโลไมต์ (กก./ไร่)} \\
+\midrule
+FLD-0001 & 12.6719$^\circ$N, 102.1932$^\circ$E & 4.83 & 4.88 & 250.0 \\
+FLD-0002 & 12.6231$^\circ$N, 102.0125$^\circ$E & 5.21 & 5.24 & 180.0 \\
+FLD-0003 & 12.3551$^\circ$N, 102.4418$^\circ$E & 4.62 & 4.65 & 350.0 \\
+FLD-0004 & 12.7845$^\circ$N, 102.1450$^\circ$E & 5.82 & 5.85 & 0.0 (เหมาะสม) \\
+FLD-0005 & 12.5520$^\circ$N, 102.3110$^\circ$E & 5.40 & 5.43 & 150.0 \\
+FLD-0006 & 12.4110$^\circ$N, 102.5220$^\circ$E & 4.75 & 4.79 & 300.0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\clearpage

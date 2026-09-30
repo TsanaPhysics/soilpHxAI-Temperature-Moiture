@@ -1,0 +1,69 @@
+\chapter{ระบบเชื่อมโยงข้อมูลคลาวด์และ Google Drive}
+\label{chap:cloud_sync}
+
+\section{สถาปัตยกรรมการแลกเปลี่ยนข้อมูลแบบเปิด (Open Data Pipeline)}
+เพื่อให้ข้อมูลคุณภาพดินที่ตรวจวัดได้จากภาคสนามสามารถนำไปใช้ประโยชน์ต่อในงานวิเคราะห์เชิงสถิติขั้นสูง การสร้างฐานข้อมูลสารสนเทศภูมิศาสตร์ (GIS) หรือการประมวลผลข้อมูลขนาดใหญ่ (Big Data Analytics) ระบบ SoilpHTxAI จึงได้รับการออกแบบระบบส่งออกข้อมูล (Data Export Pipeline) ที่มีความยืดหยุ่นและรองรับรูปแบบมาตรฐานสากล
+
+ระบบผสานการทำงานระหว่างหน่วยความจำภายในเครื่อง (Local File Cache) และระบบแชร์ของระบบปฏิบัติการ (Native Android Share Sheet) ทำให้สามารถส่งต่อชุดข้อมูลไปยัง Google Drive, อีเมลของสถาบัน, แอปพลิเคชันส่งข้อความ หรือเซิร์ฟเวอร์ฐานข้อมูลกลางได้อย่างไร้รอยต่อ
+
+\begin{figure}[H]
+\centering
+\resizebox{0.88\textwidth}{!}{
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    step_node/.style={rectangle, draw=rbruNavy, fill=white, rounded corners=6pt, text width=3.2cm, text centered, minimum height=1.2cm, line width=1pt, drop shadow={opacity=0.15}},
+    cloud_node/.style={rectangle, draw=rbruBlue, fill=rbruBlue!10, rounded corners=6pt, text width=3.2cm, text centered, minimum height=1.2cm, line width=1.5pt, drop shadow={opacity=0.2}},
+    arrow/.style={draw=rbruNavy, -{Latex[length=3mm]}, line width=1.5pt}
+]
+    \node [step_node] (data) {\textbf{ข้อมูลในแอป}\\Calibration / Field};
+    \node [step_node, right=1.6cm of data] (gen) {\textbf{จัดทำโครงสร้าง}\\ไฟล์ .CSV / .JSON};
+    \node [step_node, right=1.6cm of gen] (share) {\textbf{Android Share}\\Sheet Service};
+    \node [cloud_node, below=1.2cm of share] (gdrive) {\textbf{Google Drive}\\จัดเก็บบนคลาวด์};
+    \node [cloud_node, left=1.6cm of gdrive] (server) {\textbf{Cloud REST API}\\ฐานข้อมูลกลาง};
+
+    \path [arrow] (data) -- (gen);
+    \path [arrow] (gen) -- (share);
+    \path [arrow] (share) -- (gdrive);
+    \path [arrow] (share) -| (server);
+\end{tikzpicture}
+}
+\caption{สถาปัตยกรรมท่อส่งข้อมูลการสำรวจดินขึ้นสู่ Google Drive และคลาวด์}
+\label{fig:cloud_pipeline}
+\end{figure}
+
+\section{รูปแบบโครงสร้างข้อมูลส่งออก}
+
+\subsection{โครงสร้างไฟล์ข้อมูลสอบเทียบในห้องแล็บ (.CSV)}
+ไฟล์ข้อมูลสอบเทียบถูกส่งออกเป็นมาตรฐาน Comma-Separated Values ประกอบด้วยคอลัมน์สำคัญ ได้แก่ รหัสตัวอย่าง (\texttt{id}), ศักย์ไฟฟ้า (\texttt{potential\_mv}), อุณหภูมิ (\texttt{temperature\_c}), ค่ามาตรฐานบัฟเฟอร์ (\texttt{standard\_ph}), ค่าสูตรเนิร์นสต์ (\texttt{nernst\_ph}), ค่าทำนายของ AI (\texttt{ai\_predicted\_ph}), ค่าความคลาดเคลื่อนดั้งเดิม (\texttt{traditional\_error}), ค่าความคลาดเคลื่อน AI (\texttt{ai\_error}), การแบ่งส่วนชุดข้อมูล (\texttt{split}), และเวลาที่บันทึก (\texttt{timestamp})
+
+\subsection{โครงสร้างไฟล์ข้อมูลแปลงสำรวจดินภาคสนาม (.JSON)}
+ข้อมูลแปลงดินสำรวจ 30 แปลงถูกส่งออกในรูปแบบ JavaScript Object Notation ที่มีโครงสร้างลำดับชั้น (Hierarchical JSON) เพื่อความสะดวกในการนำเข้าสู่ระบบแผนที่ GIS และการประมวลผลต่อ ดังแสดงในตัวอย่างรหัสที่ \ref{lst:json_sample}
+
+\begin{codebox}[language=Java]{ตัวอย่างโครงสร้างข้อมูลแปลงดินภาคสนามรูปแบบ JSON}
+{
+  "project": "SoilpHTxAI - Rambhai Barni Rajabhat University",
+  "exported_at": "2026-10-01T05:30:00.000Z",
+  "record_count": 30,
+  "records": [
+    {
+      "sample_id": "FLD-0001",
+      "timestamp": "2026-10-01T04:15:22.000Z",
+      "potential_mv": 128.4,
+      "temperature_c": 28.5,
+      "raw_ph": 4.85,
+      "nernst_ph": 4.83,
+      "ai_ph": 4.88,
+      "site_name": "Nong-Or Durian Orchard Block A",
+      "province": "Chanthaburi",
+      "latitude": 12.671920,
+      "longitude": 102.193240,
+      "soil_type": "Sandy Loam",
+      "durian_status": "Severe Acidic (Critical)",
+      "recommended_lime_kg_per_rai": 250.0
+    }
+  ]
+}
+\end{codebox}
+\label{lst:json_sample}
+
+\clearpage

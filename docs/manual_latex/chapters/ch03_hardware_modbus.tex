@@ -1,0 +1,93 @@
+\chapter{สถาปัตยกรรมฮาร์ดแวร์และการสื่อสาร Modbus RTU}
+\label{chap:hardware}
+
+\section{สถาปัตยกรรมการเชื่อมต่อทางกายภาพ}
+ชุดเครื่องมือวัดของโครงการถูกออกแบบให้มีขนาดกะทัดรัด สามารถพกพาลงพื้นที่แปลงเกษตรได้สะดวก (Field-Portable) โดยใช้การเชื่อมต่อผ่านพอร์ต USB-C ของสมาร์ทโฟนระบบปฏิบัติการ Android ร่วมกับโพรบวัดดินมาตรฐานอุตสาหกรรม การส่งข้อมูลระหว่างโพรบและสมาร์ทโฟนอาศัยการสื่อสารเชิงอนุพันธ์แบบอนุกรม (Differential Serial Bus) มาตรฐาน RS485 ซึ่งมีความทนทานต่อสัญญาณรบกวนแม่เหล็กไฟฟ้าในแปลงเกษตรสูงมาก
+
+\begin{figure}[H]
+\centering
+\resizebox{0.88\textwidth}{!}{
+\begin{tikzpicture}[
+    box/.style={rectangle, draw=rbruNavy, fill=white, rounded corners=6pt, text width=3.4cm, text centered, minimum height=1.2cm, line width=1pt, drop shadow={opacity=0.15}},
+    bus/.style={draw=rbruSlate, line width=2.5pt},
+    sig/.style={draw=rbruEmerald, -{Latex[length=3mm]}, line width=1.5pt}
+]
+    \node [box, fill=rbruNavy!5] (probe) {\textbf{โพรบเซนเซอร์ดิน}\\สแตนเลส 316L 4-in-1\\(pH, Temp, Moisture, EC)};
+    \node [box, right=2.0cm of probe] (transceiver) {\textbf{โมดูลแปลงสัญญาณ}\\MAX485 + USB-UART\\(CH340 / CP2102)};
+    \node [box, right=2.0cm of transceiver, fill=rbruEmerald!5] (phone) {\textbf{สมาร์ทโฟน Android}\\USB Host OTG\\(SoilpHTxAI App)};
+
+    \draw [bus] (probe.east) -- node[above]{\small RS485 สายคู่ตีเกลียว} node[below]{\small สาย A (+) และ สาย B (-)} (transceiver.west);
+    \draw [sig] (transceiver.east) -- node[above]{\small USB-C OTG} node[below]{\small พลังงาน 5V + ข้อมูล D+/D-} (phone.west);
+\end{tikzpicture}
+}
+\caption{ผังการเชื่อมต่อวงจรฮาร์ดแวร์ระหว่างโพรบวัดดินและสมาร์ทโฟนผ่านสาย USB-C OTG}
+\label{fig:hardware_diagram}
+\end{figure}
+
+\section{ข้อมูลจำเพาะโปรโตคอล Modbus RTU}
+การสื่อสารในระดับโปรโตคอลใช้มาตรฐาน Modbus RTU แบบ Master-Slave โดยมีข้อกำหนดทางเทคนิคดังนี้
+\begin{itemize}
+    \item อัตราการรับส่งข้อมูล (Baud Rate) 9600 บิตต่อวินาที (bps)
+    \item ขนาดข้อมูล 8 บิต (Data Bits 8)
+    \item บิตตรวจสอบความถูกต้อง ไม่มี (Parity None)
+    \item บิตหยุด 1 บิต (Stop Bit 1)
+    \item หมายเลขประจำอุปกรณ์ (Slave ID) คือ \texttt{0x01}
+    \item รหัสฟังก์ชัน (Function Code) คือ \texttt{0x03} สำหรับการอ่านรีจิสเตอร์เก็บข้อมูล (Read Holding Registers)
+\end{itemize}
+
+\subsection{โครงสร้างเฟรมคำสั่งขออ่านข้อมูล}
+ในการร้องขออ่านพารามิเตอร์ทั้ง 4 ตัว แอปพลิเคชันจะส่งเฟรมข้อมูลขนาด 8 ไบต์ออกไปยังเซนเซอร์ ดังแสดงในตารางที่ \ref{tab:request_frame}
+
+\begin{table}[H]
+\caption{โครงสร้างเฟรมคำสั่งขออ่านข้อมูลพารามิเตอร์ดิน (Request Frame)}
+\label{tab:request_frame}
+\centering
+\begin{tabularx}{\textwidth}{cclY}
+\toprule
+\textbf{ลำดับไบต์} & \textbf{ค่ารหัส (Hex)} & \textbf{ความหมาย} & \textbf{คำอธิบาย} \\
+\midrule
+Byte 0 & \texttt{0x01} & Slave Address & หมายเลขประจำตัวของเซนเซอร์ดิน \\
+Byte 1 & \texttt{0x03} & Function Code & คำสั่งอ่านรีจิสเตอร์เก็บข้อมูล \\
+Byte 2-3 & \texttt{0x00 0x00} & Starting Address & ที่อยู่เริ่มต้นของรีจิสเตอร์ (Register 0) \\
+Byte 4-5 & \texttt{0x00 0x04} & Quantity of Registers & จำนวนรีจิสเตอร์ที่ต้องการอ่าน (4 รีจิสเตอร์) \\
+Byte 6 & \texttt{0x44} & CRC-16 Low Byte & ไบต์ต่ำของรหัสตรวจสอบความถูกต้อง \\
+Byte 7 & \texttt{0x09} & CRC-16 High Byte & ไบต์สูงของรหัสตรวจสอบความถูกต้อง \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{โครงสร้างเฟรมข้อมูลตอบกลับและการถอดรหัส}
+เมื่อเซนเซอร์ได้รับคำสั่งที่ถูกต้อง จะส่งเฟรมข้อมูลความยาว 13 ไบต์กลับมา แอปพลิเคชันจะตรวจสอบรหัส CRC-16 ก่อนทำการถอดรหัสพารามิเตอร์แต่ละตัวตามสูตรการคำนวณ ดังแสดงในตารางที่ \ref{tab:response_frame}
+
+\begin{table}[H]
+\caption{โครงสร้างเฟรมตอบกลับความยาว 13 ไบต์และการถอดรหัสผลการวัด}
+\label{tab:response_frame}
+\centering
+\begin{tabularx}{\textwidth}{cclY}
+\toprule
+\textbf{ตำแหน่งไบต์} & \textbf{ชื่อตัวแปร} & \textbf{สูตรการแปลงค่า} & \textbf{หน่วยการวัด} \\
+\midrule
+Byte 0 & Slave ID & \texttt{0x01} & ตรวจสอบความถูกต้อง \\
+Byte 1 & Function & \texttt{0x03} & ตรวจสอบรหัสคำสั่ง \\
+Byte 2 & Byte Count & \texttt{0x08} (8 Bytes ข้อมูล) & ขนาดข้อมูลพารามิเตอร์ \\
+Byte 3-4 & $D_0, D_1$ & $\text{Moisture} = ((D_0 \ll 8) \mid D_1) / 10.0$ & ร้อยละความชื้น (\% RH) \\
+Byte 5-6 & $D_2, D_3$ & $\text{Temp} = ((D_2 \ll 8) \mid D_3) / 10.0$ & องศาเซลเซียส ($^\circ\text{C}$) \\
+Byte 7-8 & $D_4, D_5$ & $\text{EC} = ((D_4 \ll 8) \mid D_5)$ & ไมโครซีเมนต์/ซม. ($\mu\text{S/cm}$) \\
+Byte 9-10 & $D_6, D_7$ & $\text{Raw pH} = ((D_6 \ll 8) \mid D_7) / 100.0$ & หน่วยวัดความเป็นกรด-ด่าง (pH) \\
+Byte 11-12 & $CRC_L, CRC_H$ & ตรวจสอบ CRC-16 & ตรวจจับความผิดพลาดบิต \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{การแก้ปัญหาพอร์ตชนกันและการอยู่ร่วมกันของหลายแอปพลิเคชัน}
+ในระบบปฏิบัติการ Android เมื่อผู้ใช้ติดตั้งแอปพลิเคชันตรวจวัดหลายตัวลงในสมาร์ทโฟนเครื่องเดียวกัน (เช่น ติดตั้งทั้ง SoilpH\_HT และ SoilpHTxAI) หากทุกแอปพลิเคชันลงทะเบียนตัวดักจับการเสียบสาย USB (\texttt{USB\_DEVICE\_ATTACHED} Intent-Filter) ระบบจะเด้งกล่องข้อความและพยายามเปิดทุกแอปขึ้นมาพร้อมกัน ทำให้เกิดปัญหาการแย่งสิทธิ์และพอร์ตถูกล็อก
+
+\begin{academicbox}{วิธีแก้ปัญหาพอร์ตชนกันตามมาตรฐานโครงการวิจัย (Port Lifecycle Standard)}
+ระบบ SoilpHTxAI แก้ไขปัญหานี้อย่างเป็นระบบผ่าน 2 กลไกสำคัญ ได้แก่
+\begin{enumerate}
+    \item \textbf{การปลด Intent-filter ออกจาก AndroidManifest.xml:} ยกเลิกการเปิดแอปอัตโนมัติเมื่อเสียบสาย ทำให้ผู้ใช้มีอิสระในการเลือกเปิดแอปพลิเคชันที่ต้องการใช้งานได้ด้วยตนเอง
+    \item \textbf{การจัดการสิทธิ์พอร์ตแบบยึดเมื่ออยู่เบื้องหน้าและปล่อยเมื่ออยู่เบื้องหลัง (Foreground Claiming / Background Release):} นำ \texttt{WidgetsBindingObserver} มาใช้ตรวจสอบสถานะแอปพลิเคชัน เมื่อผู้ใช้สลับแอปไปอยู่เบื้องหลัง แอปจะปิดพอร์ตและยกเลิกสิทธิ์ทันที (\texttt{disconnectUsb()}) เพื่อเปิดโอกาสให้แอปอื่นเข้าใช้งานเซนเซอร์ต่อได้โดยไม่ต้องถอดสายออก และเมื่อผู้ใช้สลับแอปกลับมาเบื้องหน้า แอปจะกลับมาเชื่อมต่อพอร์ตคืนโดยอัตโนมัติ (\texttt{connectUsb()})
+\end{enumerate}
+\end{academicbox}
+
+\clearpage
