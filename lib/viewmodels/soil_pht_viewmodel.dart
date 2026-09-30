@@ -11,6 +11,7 @@ import '../services/ai_error_compensation_model.dart';
 import '../services/dataset_generator_service.dart';
 import '../services/durian_soil_expert_service.dart';
 import '../services/usb_soil_sensor_service.dart';
+import '../services/edge_ph_model_trainer.dart';
 import '../core/constants/app_constants.dart';
 
 class SoilPhtViewModel extends ChangeNotifier {
@@ -307,6 +308,40 @@ class SoilPhtViewModel extends ChangeNotifier {
           '${s.sampleId},${s.timestamp.toIso8601String()},${s.potentialMv},${s.temperatureC},${s.rawPh},${s.nernstPh},${s.aiPh},${s.labStandardPh ?? ""},"${s.siteName}","${s.province}",${s.latitude},${s.longitude},"${s.soilType}","${s.durianStatus}",${s.recommendedLimeKgPerRai}');
     }
     return csv.toString();
+  }
+
+
+  // On-Device Edge ML State
+  EdgeMlTrainingResult? _edgeMlResult;
+  bool _isTrainingOnDevice = false;
+
+  EdgeMlTrainingResult? get edgeMlResult => _edgeMlResult;
+  bool get isTrainingOnDevice => _isTrainingOnDevice;
+  bool get isUsingCustomEdgeModel => AiErrorCompensationModel.isUsingCustomModel;
+
+  Future<EdgeMlTrainingResult> trainEdgeModelOnDevice() async {
+    _isTrainingOnDevice = true;
+    notifyListeners();
+    try {
+      final trainPoints = _calibrationDataset.where((p) => p.split == 'train').toList();
+      final result = await EdgePhModelTrainer.trainModel(trainingPoints: trainPoints);
+      _edgeMlResult = result;
+      return result;
+    } finally {
+      _isTrainingOnDevice = false;
+      notifyListeners();
+    }
+  }
+
+  void applyEdgeModel(EdgeMlTrainingResult result) {
+    AiErrorCompensationModel.setCustomWeights(result.weights);
+    notifyListeners();
+  }
+
+  void resetEdgeModelToBaseline() {
+    AiErrorCompensationModel.resetToDefaultWeights();
+    _edgeMlResult = null;
+    notifyListeners();
   }
 
   @override

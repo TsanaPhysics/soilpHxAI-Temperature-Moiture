@@ -1,5 +1,5 @@
 class AiErrorCompensationModel {
-  // Pre-computed AI Model Coefficients
+  // Pre-computed AI Model Coefficients (Default RBRU Research 2569 Baseline)
   // Inverse Non-linear Mapping: pH_predicted = g(E_real, T)
   // Trained via Multi-Layer Error Minimization on Standard Buffers (pH 4.01, 7.00, 10.01 @ 20-50°C)
   static const double cBias = 6.931715;
@@ -11,6 +11,20 @@ class AiErrorCompensationModel {
   static const double cE2T = -7.34178e-07;
   static const double cE3 = 6.27303e-07;
 
+  // Active On-Device Edge ML Custom Weights [w0, w1, w2, w3, w4, w5]
+  static List<double>? _activeCustomWeights;
+
+  static bool get isUsingCustomModel => _activeCustomWeights != null && _activeCustomWeights!.length >= 6;
+  static List<double>? get activeCustomWeights => _activeCustomWeights;
+
+  static void setCustomWeights(List<double>? weights) {
+    _activeCustomWeights = weights;
+  }
+
+  static void resetToDefaultWeights() {
+    _activeCustomWeights = null;
+  }
+
   /// High-Accuracy AI Forward Inference: g(E_real, T) -> pH_predicted
   /// Resolves asymmetry potential, non-linear curvature, and temperature drift.
   static double predict({
@@ -19,6 +33,18 @@ class AiErrorCompensationModel {
   }) {
     final double e = potentialMv;
     final double t = temperatureC;
+
+    // If edge model trained on-device is active, use custom weights
+    if (isUsingCustomModel) {
+      final w = _activeCustomWeights!;
+      final double phCustom = w[0] +
+          (w[1] * e) +
+          (w[2] * t) +
+          (w[3] * e * t) +
+          (w[4] * e * e) +
+          (w[5] * t * t);
+      return double.parse(phCustom.clamp(0.0, 14.0).toStringAsFixed(2));
+    }
 
     final double phPred = cBias +
         (cE * e) +
@@ -33,28 +59,31 @@ class AiErrorCompensationModel {
   }
 
   /// Generate embeddable C++ code for flashing into ESP32 / Arduino Microcontroller
-  /// (Conforming to Research Procedure Step 4.1 "การสร้างต้นแบบ - ฝังโมเดล AI ลงในไมโครคอนโทรลเลอร์")
   static String generateCppArduinoCode() {
+    final w0 = isUsingCustomModel ? _activeCustomWeights![0] : cBias;
+    final w1 = isUsingCustomModel ? _activeCustomWeights![1] : cE;
+    final w2 = isUsingCustomModel ? _activeCustomWeights![2] : cT;
+    final w3 = isUsingCustomModel ? _activeCustomWeights![3] : cET;
+    final w4 = isUsingCustomModel ? _activeCustomWeights![4] : cE2;
+    final w5 = isUsingCustomModel ? _activeCustomWeights![5] : cT2;
+
     return '''
 // ============================================================================
 // SoilpHTxAI - Embedded AI Error Compensation Engine for ESP32 / Arduino
 // Project: Development of a High-Accuracy Field-Portable Soil pH Meter Prototype
 // Funding: Rambhai Barni Rajabhat University Research Fund 2569
-// Principal Investigators: Tanapat Tirawoot, Asst.Prof.Dr. Chewa Thassana, Assoc.Prof.Dr. Nuntaporn Moonrungsee, Assoc.Prof.Dr. Nipat Piamarun
 // ============================================================================
 
 #include <Arduino.h>
 #include <math.h>
 
-// AI Model Inverse Mapping Parameters
-static const float C_BIAS = 6.931715f;
-static const float C_E    = -0.03481958f;
-static const float C_T    = 0.00956416f;
-static const float C_ET   = -3.47704e-05f;
-static const float C_E2   = 7.53126e-06f;
-static const float C_T2   = -1.62641e-05f;
-static const float C_E2T  = -7.34178e-07f;
-static const float C_E3   = 6.27303e-07f;
+// AI Model Inverse Mapping Parameters ${isUsingCustomModel ? "(On-Device Trained)" : "(RBRU Baseline)"}
+static const float C_BIAS = ${w0.toStringAsFixed(6)}f;
+static const float C_E    = ${w1.toStringAsFixed(8)}f;
+static const float C_T    = ${w2.toStringAsFixed(8)}f;
+static const float C_ET   = ${w3.toStringAsExponential(5)}f;
+static const float C_E2   = ${w4.toStringAsExponential(5)}f;
+static const float C_T2   = ${w5.toStringAsExponential(5)}f;
 
 // Forward Inference Routine for ESP32
 float predictAiCompensatedPh(float potentialMv, float tempC) {
@@ -66,9 +95,7 @@ float predictAiCompensatedPh(float potentialMv, float tempC) {
                  (C_T * t) +
                  (C_ET * e * t) +
                  (C_E2 * e * e) +
-                 (C_T2 * t * t) +
-                 (C_E2T * e * e * t) +
-                 (C_E3 * e * e * e);
+                 (C_T2 * t * t);
 
   if (phPred < 0.0f) phPred = 0.0f;
   if (phPred > 14.0f) phPred = 14.0f;
@@ -81,13 +108,10 @@ void setup() {
 }
 
 void loop() {
-  // Read analog potential from pH probe (GPIO 34) and Temperature (DS18B20)
-  float rawMv = 118.5f; // Replace with analogReadMilliVolts(34)
-  float tempC = 28.5f;  // Replace with sensors.getTempCByIndex(0)
-  
+  float rawMv = 118.5f;
+  float tempC = 28.5f;
   float phAI = predictAiCompensatedPh(rawMv, tempC);
   
-  // Format JSON payload for mobile app
   Serial.print("{\\"potential_mv\\":");
   Serial.print(rawMv);
   Serial.print(",\\"temperature_c\\":");
