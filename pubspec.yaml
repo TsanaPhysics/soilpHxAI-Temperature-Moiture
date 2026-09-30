@@ -41,6 +41,7 @@ dependencies:
   path_provider: ^2.1.6
   geolocator: ^14.1.1
   usb_serial: ^0.5.2
+  camera: ^0.12.0+2
 
 dev_dependencies:
   flutter_test:

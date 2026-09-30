@@ -7,6 +7,7 @@ import '../../services/usb_soil_sensor_service.dart';
 import '../../viewmodels/soil_pht_viewmodel.dart';
 import '../widgets/glassmorphic_card.dart';
 import '../widgets/nernst_formula_dialog.dart';
+import 'soil_camera_screen.dart';
 
 class LiveMonitorScreen extends StatelessWidget {
   const LiveMonitorScreen({super.key});
@@ -30,6 +31,16 @@ class LiveMonitorScreen extends StatelessWidget {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'กล้องบันทึกภาพดิน (Soil Vision)',
+            icon: const Icon(Icons.camera_alt, color: AppTheme.accentNeon),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SoilCameraScreen()),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'ทฤษฎีสมการเนินสต์',
             icon: const Icon(Icons.menu_book, color: AppTheme.primaryCyan),
