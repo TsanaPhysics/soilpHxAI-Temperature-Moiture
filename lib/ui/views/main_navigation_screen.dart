@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../viewmodels/soil_pht_viewmodel.dart';
 import 'live_monitor_screen.dart';
 import 'dataset_screen.dart';
 import 'hypothesis_screen.dart';
@@ -12,7 +14,8 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
@@ -22,6 +25,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     FieldSurveyScreen(),
     ProjectFirmwareScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (!mounted) return;
+    final vm = context.read<SoilPhtViewModel>();
+    if (state == AppLifecycleState.resumed) {
+      // Re-claim USB-C port automatically when app comes to foreground
+      vm.connectUsb();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // Release USB-C port gracefully so other soil apps can use it
+      vm.disconnectUsb();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
