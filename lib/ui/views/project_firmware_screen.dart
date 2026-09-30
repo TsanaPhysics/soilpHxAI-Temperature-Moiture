@@ -47,6 +47,29 @@ class ProjectFirmwareScreen extends StatelessWidget {
 
             // Academic References
             _buildReferencesCard(),
+            const SizedBox(height: 12),
+
+            // Developer & Research Unit Attribution Card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.verified, size: 16, color: AppTheme.primaryEmerald),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'เอกสารและระบบนี้จัดทำขึ้นโดย ${AppConstants.developedBy}',
+                      style: const TextStyle(fontSize: 10, color: AppTheme.mutedText, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
           ],
         ),
