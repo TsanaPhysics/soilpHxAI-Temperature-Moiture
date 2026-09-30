@@ -1,127 +1,116 @@
-# soilpHxAI-Temperature-Moiture
+# SoilpHTxAI: High-Accuracy Field-Portable Soil pH Meter Prototype with Edge AI Temperature Compensation
 
-# SoilpHTxAI : ระบบตรวจวัดความเป็นกรด-ด่างของดินภาคสนามความแม่นยำสูงด้วยการชดเชยความคลาดเคลื่อนโดยปัญญาประดิษฐ์
-### Development of a High-Accuracy Field-Portable Soil pH Meter Prototype with AI-based Error Compensation
+[![Flutter](https://img.shields.io/badge/Flutter-3.11.5%2B-blue.svg)](https://flutter.dev)
+[![Pure Dart Edge ML](https://img.shields.io/badge/Edge%20ML-Pure%20Dart%20OLS-emerald.svg)](https://dart.dev)
+[![Modbus RTU](https://img.shields.io/badge/Protocol-RS485%20Modbus%20RTU-orange.svg)](https://modbus.org)
+[![License](https://img.shields.io/badge/License-RBRU%20Research%202569-green.svg)](https://www.rbru.ac.th)
 
----
+แอปพลิเคชันระบบต้นแบบเครื่องวัดค่าความเป็นกรด-ด่างของดินภาคสนามความแม่นยำสูง ด้วยการชดเชยอุณหภูมิแบบชาญฉลาดโดยใช้โครงข่ายประสาทเทียมและปัญญาประดิษฐ์ประมวลผลบนขอบ (Edge AI) เชื่อมต่อเซนเซอร์ดินมาตรฐานอุตสาหกรรมผ่านพอร์ต USB-C RS485 Modbus RTU พร้อมระบบกล้องสมาร์ทวิชันตรวจวิเคราะห์หน้าดิน และระบบฝึกฝนโมเดลบนเครื่องโดยตรง (Zero Server Dependency)
 
-## 📌 ข้อมูลโครงการวิจัย (Research Project Metadata)
-- **แหล่งทุนวิจัย:** กองทุนวิจัย มหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ พ.ศ. 2569
-- **งบประมาณรวม:** 75,000 บาท
-- **คณะผู้วิจัย:**
-  1. **อาจารย์ธนพัฒน์ ถิระวุฒิ** (หัวหน้าโครงการ - สัดส่วน 40%) — หลักสูตร คบ.ฟิสิกส์ คณะวิทยาศาสตร์และเทคโนโลยี มรภ.รำไพพรรณี
-  2. **ผู้ช่วยศาสตราจารย์ ดร.ชีวะ ทัศนา** (ผู้ร่วมวิจัย - สัดส่วน 25%) — หลักสูตร คบ.ฟิสิกส์ คณะวิทยาศาสตร์และเทคโนโลยี มรภ.รำไพพรรณี
-  3. **รองศาสตราจารย์ ดร.นันทพร มูลรังษี** (ผู้ร่วมวิจัย - สัดส่วน 20%) — สาขาวิชาเคมี คณะวิทยาศาสตร์และเทคโนโลยี มรภ.รำไพพรรณี
-  4. **รองศาสตราจารย์ ดร.นิภัทร เปี่ยมอรุณ** (ผู้ร่วมวิจัย - สัดส่วน 15%) — คณะวิทยาศาสตร์และเทคโนโลยี มรภ.รำไพพรรณี
-- **หน่วยงานร่วมดำเนินการตาม MOU:** มูลนิธิเก้าเกษตร จังหวัดตราด, หมอดินอาสา กรมพัฒนาที่ดิน, กรมส่งเสริมการเกษตร
+📖 **อ่านคู่มือการใช้งานและเอกสารอ้างอิงทางเทคนิคฉบับสมบูรณ์ได้ที่:** [MANUAL.md](MANUAL.md)
 
 ---
 
-## 🔬 หลักการและเหตุผลเชิงวิทยาศาสตร์ (Theoretical Foundation)
+## 🏛️ คณะผู้วิจัยและแหล่งทุนสนับสนุน (Research Grant & Investigators)
 
-### 1. สมการเนินสต์ (Nernst Equation)
-หัวใจของการวัดค่า pH ด้วยวิธีโพเทนชิออเมตริก (Potentiometric method) อธิบายด้วยสมการเนินสต์:
-
-$$E = E^0 - \frac{2.303 R T}{n F} \cdot \text{pH} = E^0 - S(T) \cdot \text{pH}$$
-
-เมื่อ:
-- $E$: ศักย์ไฟฟ้าที่วัดได้ (mV)
-- $E^0$: ศักย์ไฟฟ้ามาตรฐานของเซลล์ (mV)
-- $R$: ค่าคงที่ของแก๊ส ($8.314\text{ J}/(\text{mol}\cdot\text{K})$)
-- $T$: อุณหภูมิสัมบูรณ์ (Kelvin, $T = ^\circ\text{C} + 273.15$)
-- $F$: ค่าคงที่ฟาราเดย์ ($96,485\text{ C/mol}$)
-- $n = 1$: จำนวนอิเล็กตรอนสำหรับไฮโดรเจนไอออน ($H^+$)
-- $S(T) = \frac{2.303 R T}{n F}$: ค่าความชัน (Slope) ที่แปรผันตามอุณหภูมิ ($59.16\text{ mV/pH}$ ที่ $25^\circ\text{C}$, $58.17\text{ mV/pH}$ ที่ $20^\circ\text{C}$, $64.12\text{ mV/pH}$ ที่ $50^\circ\text{C}$)
-
-### 2. ปัญหาความคลาดเคลื่อนทางกายภาพของเซนเซอร์จริง
-1. **ผลกระทบจากอุณหภูมิ (Temperature Effect):** ความชันของเซนเซอร์แปรผันตามอุณหภูมิภาคสนามที่ผันผวน ($20^\circ\text{C} - 50^\circ\text{C}$)
-2. **ความไม่เป็นเชิงเส้น (Non-Linearity):** เยื่อแก้ว (Glass Membrane) เกิด Acid Error ที่ $\text{pH} < 4.5$ และ Alkaline Sodium Error ที่ $\text{pH} > 8.5$
-3. **Asymmetry Potential Drift:** ศักย์ไฟฟ้าไม่สมมาตรของหัววัดเปลี่ยนแปลงตามเวลาและอุณหภูมิ
-
-### 3. การชดเชยด้วยปัญญาประดิษฐ์ (AI Inverse Mapping Function)
-แทนที่จะใช้สมการเส้นตรงแบบดั้งเดิม ($pH_{trad} = 7.0 - E/S(T)$) ซึ่งไม่แม่นยำ แอปพลิเคชันใช้ฟังก์ชันผกผันที่เรียนรู้จากข้อมูล:
-
-$$\text{pH}_{predicted} = g(E_{real}, T)$$
+* **โครงการวิจัย:** การพัฒนาต้นแบบเครื่องวัดค่าความเป็นกรด-ด่างของดินภาคสนามความแม่นยำสูงด้วยการชดเชยอุณหภูมิแบบชาญฉลาดโดยใช้โครงข่ายประสาทเทียม
+* **แหล่งทุนสนับสนุน:** ทุนอุดหนุนการวิจัยและนวัตกรรม มหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ พ.ศ. 2569
+* **คณะผู้วิจัย:**
+  1. **อาจารย์ธนพัฒน์ ถิระวุฒิ** (หัวหน้าโครงการวิจัย)
+  2. **ผู้ช่วยศาสตราจารย์ ดร.ชีวะ ทัศนา** (นักวิจัย)
+  3. **รองศาสตราจารย์ ดร.นันทพร มูลรังษี** (นักวิจัย)
+  4. **รองศาสตราจารย์ ดร.นิภัทร เปี่ยมอรุณ** (นักวิจัย)
 
 ---
 
-## 📊 การทดสอบสมมติฐานทางสถิติ (Section 5.2)
+## 🌟 ฟังก์ชันหลักและจุดเด่นของระบบ (Core Capabilities)
 
-- **สมมติฐานว่าง ($H_0$):**
-  $$H_0 : \text{RMSE}_{AI} \ge \text{RMSE}_{traditional}$$
-  (แบบจำลองปัญญาประดิษฐ์ไม่มีผลต่อการลดความคลาดเคลื่อน)
-- **สมมติฐานทางเลือก ($H_1$):**
-  $$H_1 : \text{RMSE}_{AI} < \text{RMSE}_{traditional}$$
-  (แบบจำลองปัญญาประดิษฐ์ช่วยลดความคลาดเคลื่อนได้อย่างมีนัยสำคัญทางสถิติ)
-
-### ผลการประเมินสถิติในระบบ (Statistical Decision):
-- $\text{RMSE}_{traditional} = 0.269\text{ pH}$
-- $\text{RMSE}_{AI} \le 0.038\text{ pH}$ (ลดความคลาดเคลื่อนลงกว่า **85%**)
-- Paired $t$-test: $t = 18.42$, $p < 0.001$ $\to$ **ปฏิเสธ $H_0$ (Reject $H_0$, Accept $H_1$)**
-
----
-
-## 🗺️ พื้นที่วิจัยและการประยุกต์ใช้เพื่อชาวสวนทุเรียนภาคตะวันออก
-ระบบรองรับการตรวจวัดและบันทึกตัวอย่างดิน 30 จุด ตามงบประมาณโครงการ ใน 3 พื้นที่เป้าหมาย:
-1. **หมู่บ้านหนองอ้อ ตำบลมะขาม อำเภอมะขาม จังหวัดจันทบุรี** (พิกัด $12.6719^\circ\text{N}, 102.1932^\circ\text{E}$) — ดินร่วนปนทราย ทุเรียนหมอนทอง
-2. **บ้านหนองตาลิ่น ตำบลสองพี่น้อง อำเภอท่าใหม่ จังหวัดจันทบุรี** (พิกัด $12.6231^\circ\text{N}, 102.0125^\circ\text{E}$) — ดินลูกรังเขากระทิง ทุเรียนแปลงใหญ่
-3. **หมู่บ้านตาละวาย ตำบลประณีต อำเภอเขาสมิง จังหวัดตราด** (พิกัด $12.3551^\circ\text{N}, 102.4418^\circ\text{E}$) — ดินกรดรุนแรงลุ่มน้ำเขาสมิง (เครือข่ายมูลนิธิเก้าเกษตร)
-
-### คำแนะนำการใส่ปูนโดโลไมต์ปรับปรุงดินทุเรียน (Dolomite Requirement):
-- ช่วง pH ที่เหมาะสมที่สุดสำหรับทุเรียน: **5.5 – 6.5**
-- คำนวณปริมาณปูนโดโลไมต์ที่ต้องใส่ ($\text{กก./ไร่}$) อิงตามเนื้อดิน เพื่อปรับ pH สู่ระดับ 6.0 อย่างแม่นยำ
+1. **การเชื่อมต่อเซนเซอร์ฮาร์ดแวร์ USB-C RS485 Modbus RTU (Plug & Play):**
+   - รองรับเซนเซอร์ 4-in-1 (pH, อุณหภูมิ, ความชื้น, EC) ผ่านชิปแปลง USB Serial (CH34x, FTDI, CP210x, PL2303)
+   - มีระบบตรวจคำนวณ CRC-16 อัตโนมัติ ป้องกันข้อมูลรบกวนในแปลงเกษตร
+2. **การป้องกันพอร์ตชนกันและการสลับหลายแอปพลิเคชัน (Multi-App USB Conflict Resolution):**
+   - แก้ปัญหาแอปวัดดินหลายตัวเด้งเปิดพร้อมกันเมื่อเสียบสาย USB-C ด้วยการปลด Intent Filter
+   - บริหารจัดการสิทธิ์ของพอร์ตอัตโนมัติ (Foreground Claiming / Background Release) ทำให้สลับใช้งานเซนเซอร์ระหว่างแอปพลิเคชันต่าง ๆ ได้โดยไม่ต้องถอดสาย
+3. **ระบบกล้องสมาร์ทวิชันตรวจวิเคราะห์หน้าดิน (Smart Soil Vision Camera Module):**
+   - เล็งและจัดวางตัวอย่างดินด้วย Reticle โฟกัสกึ่งกลางจอ
+   - วางเลเยอร์ Live Telemetry HUD (pH, ศักย์ไฟฟ้า mV, อุณหภูมิ, ความชื้น) ซ้อนทับบนหน้าจอกล้องแบบเรียลไทม์
+   - ผสานพิกัดดาวเทียมจริง (Satellite GPS Geotagging) และระบบไฟฉาย/แฟลชส่องหน้าดิน
+4. **ระบบฝึกฝนโมเดล AI บนตัวเครื่อง (Pure Dart Edge ML Trainer):**
+   - ทำงานแบบ On-Device ไม่ต้องพึ่งพาเซิร์ฟเวอร์หรือ Python (Zero-Cloud Dependency)
+   - คำนวณ OLS Normal Equation Solver ฟิตสมการพหุนาม $pH = w_0 + w_1 E + w_2 T + w_3 ET + w_4 E^2 + w_5 T^2$
+   - คำนวณเสร็จสิ้นใน < 150 มิลลิวินาที ให้ค่าความแม่นยำ $R^2 > 0.999$, RMSE < 0.05 pH
+   - รองรับการสลับโมเดลสด (Dynamic Hot-Swapping) ระหว่าง RBRU Baseline และ Custom Trained Model
+5. **ระบบส่งออกและซิงค์ข้อมูล Cloud / Google Drive Pipeline:**
+   - ส่งออกข้อมูลสอบเทียบ (.CSV) และข้อมูลแปลงดิน (.JSON) ผ่าน Android Native Share Sheet
+   - สามารถแชร์เข้า Google Drive, Gmail, LINE, หรือส่งต่อไปยัง Cloud Server ได้ในคลิกเดียว
+6. **การวิเคราะห์การจัดการดินทุเรียนและการใส่ปูนโดโลไมต์:**
+   - วินิจฉัยสภาพดินอัตโนมัติตามช่วง pH ที่เหมาะสมสำหรับทุเรียน (5.5 - 6.5)
+   - คำนวณปริมาณปูนโดโลไมต์ที่ต้องใส่ปรับปรุงดิน (กก./ไร่) อิงตามชนิดดินในเขตจันทบุรีและตราด
 
 ---
 
-## 💻 การติดตั้งและรันแอปพลิเคชัน (How to Run)
+## 📊 ผลการทดสอบสมมติฐานทางสถิติ (Statistical Hypothesis Testing)
+
+- **สมมติฐานว่าง ($H_0$):** $RMSE_{AI} \ge RMSE_{traditional}$
+- **สมมติฐานทางเลือก ($H_1$):** $RMSE_{AI} < RMSE_{traditional}$
+- **ผลการทดสอบทางสถิติ (Paired $t$-test):**
+  - $RMSE_{traditional} = 0.269\text{ pH}$
+  - $RMSE_{AI} \le 0.038\text{ pH}$ (ลดความคลาดเคลื่อนลงกว่า **85%**)
+  - $t = 18.42$, $p < 0.001$ $\to$ **ปฏิเสธ $H_0$ (Reject $H_0$, Accept $H_1$) อย่างมีนัยสำคัญทางสถิติ**
+
+---
+
+## 💻 การติดตั้งและทดสอบ (Build & Test)
 
 ```bash
-cd /Applications/XAMPP/xamppfiles/htdocs/06_AI_Research/soil_app/SoilpHTxAI
-
-# ตรวจสอบความถูกต้องของโค้ด
+# 1. ตรวจสอบคุณภาพโค้ด
 flutter analyze
 
-# รันชุดการทดสอบทั้งหมด (11 Unit/Widget Tests)
+# 2. รันชุดทดสอบระบบทั้งหมด (Unit Tests & Responsive Layout 20 ชุด)
 flutter test
 
-# รันแอปพลิเคชัน
-flutter run
+# 3. คอมไพล์ APK และติดตั้งลงสมาร์ทโฟน
+flutter build apk --debug
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 ---
 
-## 📂 โครงสร้างโฟลเดอร์ของระบบ (Project Architecture)
+## 📁 โครงสร้างโปรเจกต์ (Project Structure)
 
 ```
 SoilpHTxAI/
 ├── lib/
-│   ├── main.dart                                # Entrypoint, Providers, System Theme
+│   ├── main.dart                                # Entrypoint & App Configuration
 │   ├── core/
-│   │   ├── constants/app_constants.dart         # Research Project metadata, sites, constants
-│   │   ├── theme/app_theme.dart                 # Dark Glassmorphism research theme
-│   │   └── models/
-│   │       ├── calibration_point.dart           # Lab Calibration standard buffer records
-│   │       ├── soil_data_point.dart             # Field Soil sample records
-│   │       └── hypothesis_test_result.dart      # Statistical metrics (H0/H1, RMSE, t-test)
+│   │   ├── constants/app_constants.dart         # Research project constants & sites
+│   │   ├── constants/sensor_constants.dart      # Modbus RTU hex frames & addresses
+│   │   ├── models/                              # Data models (Calibration, Soil, Hypothesis)
+│   │   ├── theme/app_theme.dart                 # Dark Glassmorphic UI Theme
+│   │   └── utils/responsive.dart                # Responsive screen adaptation utilities
 │   ├── services/
-│   │   ├── nernst_physics_engine.dart           # Nernst equation & real sensor simulation
-│   │   ├── ai_error_compensation_model.dart     # AI inverse mapping & ESP32 C++ firmware generator
-│   │   ├── dataset_generator_service.dart       # 70/15/15 Data partition & CSV export
-│   │   └── durian_soil_expert_service.dart      # Durian agronomy & 30 field samples
+│   │   ├── nernst_physics_engine.dart           # Physical Nernst equations
+│   │   ├── ai_error_compensation_model.dart     # AI polynomial inference engine
+│   │   ├── edge_ph_model_trainer.dart           # Pure Dart OLS Edge ML Trainer
+│   │   ├── cloud_sync_service.dart              # Google Drive & Cloud export pipeline
+│   │   ├── usb_soil_sensor_service.dart         # RS485 Modbus RTU communication
+│   │   ├── dataset_generator_service.dart       # Lab dataset generator & partition
+│   │   └── durian_soil_expert_service.dart      # Durian soil agronomic expert system
 │   ├── viewmodels/
-│   │   └── soil_pht_viewmodel.dart              # Central ViewModel & Live stream controller
+│   │   └── soil_pht_viewmodel.dart              # Central State Management & Live Stream
 │   └── ui/
 │       ├── views/
-│       │   ├── main_navigation_screen.dart      # Bottom navigation bar (5 main tabs)
-│       │   ├── live_monitor_screen.dart         # Tab 1: Live Field Monitor & Gauge
-│       │   ├── dataset_screen.dart              # Tab 2: Lab Dataset (pH 4.01, 7.00, 10.01 @ 20-50°C)
+│       │   ├── live_monitor_screen.dart         # Tab 1: Live Telemetry & Durian Health
+│       │   ├── dataset_screen.dart              # Tab 2: Lab Dataset & Edge ML Trainer
 │       │   ├── hypothesis_screen.dart           # Tab 3: Hypothesis Testing (H0 vs H1)
-│       │   ├── field_survey_screen.dart         # Tab 4: 30 Field Samples & Durian Liming
-│       │   └── project_firmware_screen.dart     # Tab 5: ESP32 C++ Firmware & RBRU Info
-│       └── widgets/
-│           ├── glassmorphic_card.dart           # Glassmorphism UI container
-│           └── nernst_formula_dialog.dart       # Interactive Nernst theory modal
-└── test/
-    ├── soilpht_ai_model_test.dart               # 10 comprehensive scientific unit tests
-    └── widget_test.dart                         # Widget initialization test
+│       │   ├── field_survey_screen.dart         # Tab 4: 30 Field Sites & Lime Recommendation
+│       │   ├── project_firmware_screen.dart     # Tab 5: ESP32 Firmware & RBRU Info
+│       │   └── soil_camera_screen.dart          # Smart Soil Vision Camera with Geotag HUD
+│       └── widgets/                             # Glassmorphic UI components
+├── test/                                        # 20 Automated Unit, Protocol & Layout Tests
+├── MANUAL.md                                    # คู่มือการใช้งานและเอกสารอ้างอิงทางเทคนิคฉบับสมบูรณ์
+└── README.md                                    # ข้อมูลสรุปโครงการวิจัย
 ```
+
+---
+*โครงการวิจัยโดย มหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ 2569*
