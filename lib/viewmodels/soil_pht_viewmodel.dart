@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import '../core/models/calibration_point.dart';
 import '../core/models/soil_data_point.dart';
 import '../core/models/hypothesis_test_result.dart';
@@ -19,6 +20,11 @@ class SoilPhtViewModel extends ChangeNotifier {
   bool _isStreaming = true;
   bool _isAiCompensationEnabled = true;
   Timer? _streamTimer;
+
+  // Real-time GPS location state
+  double? _liveLatitude;
+  double? _liveLongitude;
+  bool _isGpsActive = false;
 
   // Physical USB-C Soil Parameter Sensor Service
   late final UsbSoilSensorService _usbService;
@@ -45,6 +51,7 @@ class SoilPhtViewModel extends ChangeNotifier {
     _initUsbListeners();
     _initializeData();
     _startLiveStream();
+    _initGps();
   }
 
   void _initUsbListeners() {
@@ -65,12 +72,40 @@ class SoilPhtViewModel extends ChangeNotifier {
     });
   }
 
+  Future<void> _initGps() async {
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium, timeLimit: Duration(seconds: 4)),
+        );
+        _liveLatitude = pos.latitude;
+        _liveLongitude = pos.longitude;
+        _isGpsActive = true;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
   // Getters
   double get potentialMv => _potentialMv;
   double get temperatureC => _temperatureC;
   bool get isStreaming => _isStreaming;
   bool get isAiCompensationEnabled => _isAiCompensationEnabled;
   double get targetGroundTruthPh => _targetGroundTruthPh;
+
+  // GPS getters
+  double? get liveLatitude => _liveLatitude;
+  double? get liveLongitude => _liveLongitude;
+  bool get isGpsActive => _isGpsActive;
 
   // USB Status & Parameters
   UsbStatus get usbStatus => _usbStatus;
@@ -89,7 +124,6 @@ class SoilPhtViewModel extends ChangeNotifier {
     if (isUsbConnected) {
       return _usbRawPh;
     }
-    // Uncalibrated linear assumption (fixed 59.16 mV slope without temp compensation)
     return double.parse((7.0 - (_potentialMv / 59.16)).clamp(0.0, 14.0).toStringAsFixed(2));
   }
 
@@ -130,7 +164,6 @@ class SoilPhtViewModel extends ChangeNotifier {
     _streamTimer?.cancel();
     _streamTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
       if (!_isStreaming) return;
-      // If USB is actively connected, readings are updated directly via USB stream
       if (isUsbConnected) return;
       _updateSimulatedReading();
     });
@@ -138,11 +171,9 @@ class SoilPhtViewModel extends ChangeNotifier {
 
   void _updateSimulatedReading() {
     final Random rng = Random();
-    // Slight thermal fluctuation (±0.4 °C)
     final double tempJitter = (rng.nextDouble() - 0.5) * 0.4;
     _temperatureC = double.parse((_temperatureC + tempJitter).clamp(18.0, 48.0).toStringAsFixed(1));
 
-    // Realistic sensor potential with non-linear drift and noise
     _potentialMv = NernstPhysicsEngine.simulateRealSensorPotential(
       truePh: _targetGroundTruthPh,
       temperatureC: _temperatureC,
@@ -208,11 +239,33 @@ class SoilPhtViewModel extends ChangeNotifier {
     }
   }
 
-  void logCurrentFieldSample() {
+  Future<void> logCurrentFieldSample() async {
     final site = currentTargetSite;
     final String sampleId =
         'SMP-NEW-${(_fieldSamples.length + 1).toString().padLeft(3, '0')}';
     final diag = DurianSoilExpertService.diagnoseSoilStatus(currentAiPh);
+
+    // Read real-time GPS coordinates if available, otherwise use target site coordinates
+    double currentLat = site['lat'] as double;
+    double currentLng = site['lng'] as double;
+
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
+          final pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 3)),
+          );
+          currentLat = double.parse(pos.latitude.toStringAsFixed(6));
+          currentLng = double.parse(pos.longitude.toStringAsFixed(6));
+          _liveLatitude = currentLat;
+          _liveLongitude = currentLng;
+          _isGpsActive = true;
+        }
+      }
+    } catch (_) {}
 
     final newPoint = SoilDataPoint(
       sampleId: sampleId,
@@ -223,10 +276,12 @@ class SoilPhtViewModel extends ChangeNotifier {
       nernstPh: currentNernstPh,
       aiPh: currentAiPh,
       labStandardPh: _targetGroundTruthPh,
-      siteName: '${site['village']} ${site['subdistrict']}',
+      siteName: _isGpsActive
+          ? '${site['village']} (GPS Live)'
+          : '${site['village']} ${site['subdistrict']}',
       province: site['province'],
-      latitude: site['lat'],
-      longitude: site['lng'],
+      latitude: currentLat,
+      longitude: currentLng,
       soilType: site['soilType'],
       durianStatus: diag['status'],
       recommendedLimeKgPerRai: DurianSoilExpertService.calculateRecommendedLimeKgPerRai(
