@@ -2,6 +2,10 @@
 ## โครงการวิจัยและพัฒนาต้นแบบเครื่องวัดค่าความเป็นกรด-ด่างของดินภาคสนามความแม่นยำสูงด้วยการชดเชยอุณหภูมิแบบชาญฉลาดโดยใช้โครงข่ายประสาทเทียม
 ### SoilpHTxAI: High-Accuracy Field-Portable Soil pH Meter Prototype with Edge AI Temperature Compensation
 
+<p align="center">
+  <img src="docs/cover_page_preview.png" width="400" alt="SoilpHTxAI Research Monograph & System Manual Cover" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+</p>
+
 ---
 
 ## สารบัญ (Table of Contents)

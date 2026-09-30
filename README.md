@@ -7,7 +7,11 @@
 
 แอปพลิเคชันระบบต้นแบบเครื่องวัดค่าความเป็นกรด-ด่างของดินภาคสนามความแม่นยำสูง ด้วยการชดเชยอุณหภูมิแบบชาญฉลาดโดยใช้โครงข่ายประสาทเทียมและปัญญาประดิษฐ์ประมวลผลบนขอบ (Edge AI) เชื่อมต่อเซนเซอร์ดินมาตรฐานอุตสาหกรรมผ่านพอร์ต USB-C RS485 Modbus RTU พร้อมระบบกล้องสมาร์ทวิชันตรวจวิเคราะห์หน้าดิน และระบบฝึกฝนโมเดลบนเครื่องโดยตรง (Zero Server Dependency)
 
-📖 **อ่านคู่มือการใช้งานและเอกสารอ้างอิงทางเทคนิคฉบับสมบูรณ์ได้ที่:** [MANUAL.md](MANUAL.md)
+<p align="center">
+  <img src="docs/cover_page_preview.png" width="420" alt="SoilpHTxAI Research Monograph & System Manual Cover" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+</p>
+
+📖 **อ่านคู่มือการใช้งานและเอกสารอ้างอิงทางเทคนิคฉบับสมบูรณ์ได้ที่:** [MANUAL.md](MANUAL.md) | **ดาวน์โหลดเล่ม PDF (38 หน้า):** [docs/manual_latex/main.pdf](docs/manual_latex/main.pdf)
 
 ---
 
