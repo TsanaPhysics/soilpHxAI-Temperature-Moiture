@@ -115,6 +115,7 @@ class SoilPhtViewModel extends ChangeNotifier {
   int get usbEc => _usbEc;
   double get usbRawPh => _usbRawPh;
   int get usbBaudRate => _usbService.currentBaudRate;
+  String get usbStatusMessage => _usbService.statusMessage;
   String get usbLastHexRx => _usbService.lastHexRx;
   String get usbLastHexTx => _usbService.lastHexTx;
 
@@ -221,9 +222,10 @@ class SoilPhtViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> connectUsb() async {
-    await _usbService.autoConnect();
+  Future<bool> connectUsb() async {
+    final success = await _usbService.autoConnect();
     notifyListeners();
+    return success;
   }
 
   Future<void> disconnectUsb() async {

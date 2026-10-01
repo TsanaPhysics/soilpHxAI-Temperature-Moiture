@@ -39,6 +39,9 @@ class UsbSoilSensorService {
   String _lastHexTx = '';
   String get lastHexTx => _lastHexTx;
 
+  String _statusMessage = 'เสียบสาย USB-C OTG หรือเปิดการเชื่อมต่อ OTG ในตั้งค่า';
+  String get statusMessage => _statusMessage;
+
   bool _isConnecting = false;
   int _consecutiveEmptyPolls = 0;
   int _queryCycle = 0;
@@ -113,21 +116,25 @@ class UsbSoilSensorService {
     try {
       final devices = await UsbSerial.listDevices();
       if (devices.isEmpty) {
+        _statusMessage = 'ไม่พบอุปกรณ์ USB (กรุณาเปิด "การเชื่อมต่อ OTG" ในตั้งค่า)';
         _setStatus(UsbStatus.disconnected);
         return false;
       }
 
       final device = devices.first;
+      _statusMessage = 'พบ ${device.productName ?? "ชิป RS485"} กำลังขอสิทธิ์ USB...';
       debugPrint('[UsbSoilSensorService] Connecting to ${device.productName} (VID:${device.vid}, PID:${device.pid}) at $baudRate bps');
 
       _port = await device.create();
       if (_port == null) {
+        _statusMessage = 'สร้างพอร์ตไม่สำเร็จ (ไดรเวอร์ไม่รองรับ)';
         _setStatus(UsbStatus.error);
         return false;
       }
 
       final bool openResult = await _port!.open();
       if (!openResult) {
+        _statusMessage = 'เปิดพอร์ตไม่สำเร็จ (กรุณากดอนุญาตสิทธิ์ USB บนหน้าจอ)';
         _setStatus(UsbStatus.error);
         return false;
       }
@@ -154,6 +161,7 @@ class UsbSoilSensorService {
       });
 
       _startPolling();
+      _statusMessage = "เชื่อมต่อ ${device.productName ?? 'RS485'} สำเร็จ";
       _setStatus(UsbStatus.connected);
       return true;
     } catch (e) {

@@ -208,10 +208,13 @@ class LiveMonitorScreen extends StatelessWidget {
                 Text(
                   vm.isUsbConnected
                       ? 'Baud Rate: ${vm.usbBaudRate} bps | Modbus RTU 0x01'
-                      : 'เสียบสาย USB-C OTG หรือ CH340 เพื่ออ่านค่าจริง',
-                  maxLines: 1,
+                      : vm.usbStatusMessage,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: AppTheme.neutralText),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: vm.usbStatus == UsbStatus.error ? AppTheme.dangerRose : AppTheme.neutralText,
+                  ),
                 ),
               ],
             ),
@@ -226,11 +229,20 @@ class LiveMonitorScreen extends StatelessWidget {
               color: vm.isUsbConnected ? AppTheme.warningOrange : AppTheme.primaryCyan,
               size: 20,
             ),
-            onPressed: () {
+            onPressed: () async {
               if (vm.isUsbConnected) {
-                vm.disconnectUsb();
+                await vm.disconnectUsb();
               } else {
-                vm.connectUsb();
+                final success = await vm.connectUsb();
+                if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('💡 คำแนะนำ: หากเสียบสาย USB-C แล้วยังไม่เชื่อมต่อ ให้เปิด "การเชื่อมต่อ OTG" ในการตั้งค่าสมาร์ทโฟน และตรวจสอบไฟเลี้ยงเซนเซอร์ (5V-12V)'),
+                      backgroundColor: AppTheme.warningOrange,
+                      duration: Duration(seconds: 5),
+                    ),
+                  );
+                }
               }
             },
           ),
