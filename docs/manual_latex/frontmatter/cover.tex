@@ -11,74 +11,93 @@
         (current page.south west) rectangle (current page.north east);
     
     % Top Gold Accent Lines
-    \draw[line width=3pt, color=rbruGold] ($(current page.north west)+(25mm,-18mm)$) -- ($(current page.north east)+(-20mm,-18mm)$);
-    \draw[line width=1pt, color=rbruGold!50] ($(current page.north west)+(25mm,-20mm)$) -- ($(current page.north east)+(-20mm,-20mm)$);
+    \draw[line width=2.5pt, color=rbruGold] ($(current page.north west)+(25mm,-16mm)$) -- ($(current page.north east)+(-20mm,-16mm)$);
+    \draw[line width=0.8pt, color=rbruGold!50] ($(current page.north west)+(25mm,-18mm)$) -- ($(current page.north east)+(-20mm,-18mm)$);
     
-    % Header Banner (ลบคำว่า "รายงานและ" ออก)
-    \node[anchor=north west, text width=155mm] at ($(current page.north west)+(25mm,-25mm)$) {
-        {\fontsize{13}{16}\selectfont\bfseries\color{rbruGold} คู่มือวิจัยฉบับสมบูรณ์ (Comprehensive Research Monograph \& System Manual)\par}
-        \vspace{1.5mm}
-        {\fontsize{10.5}{13}\selectfont\color{white!80} ทุนอุดหนุนการวิจัยและนวัตกรรม มหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ พ.ศ. 2569\par}
+    % Header Banner: กระชับ บรรทัดเดียว ตามคำสั่ง
+    \node[anchor=north west, text width=165mm] at ($(current page.north west)+(25mm,-21mm)$) {
+        {\fontsize{10}{13}\selectfont\bfseries\color{rbruGold} คู่มือวิจัยฉบับสมบูรณ์ \quad \textcolor{white!40}{|} \quad \textnormal{\textcolor{white!85}{ทุนอุดหนุนการวิจัยและนวัตกรรม มหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ พ.ศ. 2569}}\par}
     };
     
-    % Main Title Box (ตัดคำต่อเนื่อง ไม่ฉีกคำ กระชับและสละสลวย)
-    \node[anchor=north, text width=160mm] at ($(current page.north)+(2.5mm,-48mm)$) {
+    % Main Title Box: ปรับชื่อหนังสือเหลือ 2 บรรทัด ตัดคำต่อเนื่อง ไม่ฉีกคำ
+    \node[anchor=north, text width=175mm] at ($(current page.north)+(2.5mm,-32mm)$) {
         \begin{center}
-            {\fontsize{23}{31}\selectfont\bfseries\color{white}
+            {\fontsize{22}{29}\selectfont\bfseries\color{white}
             การพัฒนาต้นแบบเครื่องวัดค่า pH ดินภาคสนามความแม่นยำสูง\\
             ด้วยการชดเชยอุณหภูมิอัจฉริยะโดยโครงข่ายประสาทเทียม\par}
-            \vspace{3.5mm}
-            {\color{rbruGold}\rule{0.65\textwidth}{1.8pt}\par}
-            \vspace{3mm}
-            {\fontsize{11.5}{15}\selectfont\itshape\color{white!90}
+            \vspace{2.5mm}
+            {\color{rbruGold}\rule{0.55\textwidth}{1.5pt}\par}
+            \vspace{2.5mm}
+            {\fontsize{10.5}{14}\selectfont\itshape\color{white!85}
             Development of High-Accuracy Field-Portable Soil pH Meter Prototype\\
             with Intelligent Temperature Compensation Using Neural Networks\par}
-            \vspace{2.5mm}
-            {\fontsize{13}{16}\selectfont\bfseries\color{rbruCyan} [ SoilpHTxAI Edge AI System ]\par}
+            \vspace{2mm}
+            {\fontsize{12}{15}\selectfont\bfseries\color{rbruCyan} [ SoilpHTxAI Edge AI System ]\par}
         \end{center}
     };
 
-    % Real Smartphone Hero Device Mockup (ภาพจริงของหน้า application ตรงกลางอย่างสง่างาม)
-    \node[anchor=center] at ($(current page.center)+(2.5mm,-18mm)$) {
+    % Real Smartphone Dual Device Mockup: ภาพประกอบปกเดิมที่สวยงาม จัดระยะห่างไม่ให้ซ้อนทับตัวหนังสือ
+    \node[anchor=center] at ($(current page.north)+(2.5mm,-162mm)$) {
         \begin{tikzpicture}
-            % Ambient Backlight Glow
-            % Smartphone ambient aura
-            
-            % Outer Gold/Titanium Smartphone Chassis with Drop Shadow
-            \draw[rounded corners=22pt, fill=black!92, draw=rbruGold, line width=2.6pt, drop shadow={opacity=0.75, shadow xshift=6pt, shadow yshift=-7pt}] (-2.85,-6.05) rectangle (2.85,6.05);
-            
-            % Inner Bezel
-            \draw[rounded corners=18pt, fill=black, line width=0.8pt, draw=black] (-2.7,-5.9) rectangle (2.7,5.9);
-            
-            % Real Application Screenshot Clipped into Display
-            \begin{scope}
-                \clip[rounded corners=16pt] (-2.65,-5.85) rectangle (2.65,5.85);
-                \node at (0,0) {\includegraphics[width=5.3cm, height=11.7cm]{figures/app_screen_usb_opt.png}};
+            % ========================================================
+            % SECONDARY PHONE (Right: Edge ML Studio Screen)
+            % ========================================================
+            \begin{scope}[shift={(2.3cm, 0.4cm)}, rotate=-4, scale=0.86]
+                % Chassis & Shadow
+                \draw[rounded corners=18pt, fill=black!85, draw=rbruCyan!80!white, line width=1.8pt, drop shadow={opacity=0.6, shadow xshift=4pt, shadow yshift=-4pt}] (-2.55,-5.25) rectangle (2.55,5.25);
+                % Screen Area Clip
+                \begin{scope}
+                    \clip[rounded corners=14pt] (-2.4,-5.1) rectangle (2.4,5.1);
+                    \node at (0,0) {\includegraphics[width=4.8cm, height=10.2cm]{figures/app_screen_edgeml_opt.png}};
+                \end{scope}
+                % Punch Hole Camera
+                \fill[black] (0,4.8) circle (2.2pt);
+                % Subtle Glass Glare
+                \begin{scope}
+                    \clip[rounded corners=14pt] (-2.4,-5.1) rectangle (2.4,5.1);
+                    \fill[white, opacity=0.07] (-3,6) -- (4,6) -- (-1,-6) -- (-3,-6) -- cycle;
+                \end{scope}
+                % Label Pill
+                \node[anchor=south, fill=rbruNavy!95!black, draw=rbruCyan, line width=0.8pt, rounded corners=3pt, inner sep=3pt] at (0,-5.8) {
+                    {\fontsize{7.5}{9}\selectfont\bfseries\color{rbruCyan} Edge ML Studio: On-Device OLS}
+                };
             \end{scope}
-            
-            % Dynamic Island / Camera Punch Hole
-            \draw[rounded corners=4pt, fill=black, draw=white!15, line width=0.4pt] (-0.85,5.48) rectangle (0.85,5.74);
-            \fill[blue!40!black] (0.4,5.61) circle (1.6pt);
-            
-            % Subtle Glass Glare Reflection
-            \begin{scope}
-                \clip[rounded corners=16pt] (-2.65,-5.85) rectangle (2.65,5.85);
-                \fill[white, opacity=0.07] (-4,7) -- (5,7) -- (-1,-7) -- (-4,-7) -- cycle;
+
+            % ========================================================
+            % PRIMARY HERO PHONE (Left / Center: Live Telemetry Screen)
+            % ========================================================
+            \begin{scope}[shift={(-1.3cm, -0.3cm)}, rotate=2, scale=0.94]
+                % Outer Gold/Titanium Bezel
+                \draw[rounded corners=20pt, fill=black!92, draw=rbruGold, line width=2.4pt, drop shadow={opacity=0.75, shadow xshift=6pt, shadow yshift=-6pt}] (-2.65,-5.45) rectangle (2.65,5.45);
+                % Inner Frame
+                \draw[rounded corners=16pt, fill=black, line width=0.8pt, draw=black] (-2.5,-5.3) rectangle (2.5,5.3);
+                % Screen Area Clip with Real Screenshot
+                \begin{scope}
+                    \clip[rounded corners=15pt] (-2.45,-5.25) rectangle (2.45,5.25);
+                    \node at (0,0) {\includegraphics[width=4.9cm, height=10.5cm]{figures/app_screen_usb_opt.png}};
+                \end{scope}
+                % Dynamic Island / Camera Punch Hole
+                \draw[rounded corners=4pt, fill=black, draw=white!15, line width=0.4pt] (-0.8,4.9) rectangle (0.8,5.15);
+                \fill[blue!40!black] (0.35,5.025) circle (1.5pt);
+                % Elegant Glass Glare Reflection
+                \begin{scope}
+                    \clip[rounded corners=15pt] (-2.45,-5.25) rectangle (2.45,5.25);
+                    \fill[white, opacity=0.08] (-3,6) -- (4,6) -- (-1,-6) -- (-3,-6) -- cycle;
+                \end{scope}
+                % Live Telemetry Indicator Badge
+                \node[anchor=south, fill=rbruNavy!95!black, draw=rbruEmerald, line width=1pt, rounded corners=3pt, inner sep=3.5pt] at (0,-6.1) {
+                    {\fontsize{8}{10}\selectfont\bfseries\color{white} \textcolor{rbruEmerald}{\Large$\bullet$} Live Telemetry: USB-C Modbus RTU}
+                };
             \end{scope}
-            
-            % High-Tech Hardware Status Badge
-            \node[anchor=south, fill=rbruNavy!95!black, draw=rbruEmerald, line width=1pt, rounded corners=4pt, inner sep=4pt] at (0,-6.7) {
-                {\fontsize{8.5}{11}\selectfont\bfseries\color{white} \textcolor{rbruEmerald}{\Large$\bullet$} Live Telemetry: USB-C Modbus RTU \quad \textcolor{rbruGold}{|} \quad Pure Dart Edge AI}
-            };
         \end{tikzpicture}
     };
 
-    % Publisher & Attribution Footer (ลบคำว่า "จัดทำขึ้นโดย" ออก และตัดกล่องคณะผู้วิจัยออกตามสั่ง)
-    \node[anchor=south, text width=160mm] at ($(current page.south)+(2.5mm,16mm)$) {
+    % Publisher & Attribution Footer (ปลอด "จัดทำขึ้นโดย" และปลอดกล่องคณะผู้วิจัยตามสั่ง)
+    \node[anchor=south, text width=160mm] at ($(current page.south)+(2.5mm,14mm)$) {
         \begin{center}
             {\fontsize{13}{17}\selectfont\bfseries\color{white} ผศ.ดร.ชีวะ ทัศนา\par}
             \vspace{1.5mm}
-            {\fontsize{10}{13}\selectfont\color{white!85} หน่วยวิจัยปัญญาประดิษฐ์เพื่อเกษตรดิจิทัล คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี\par}
+            {\fontsize{9.5}{13}\selectfont\color{white!85} หน่วยวิจัยปัญญาประดิษฐ์เพื่อเกษตรดิจิทัล คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี\par}
             \vspace{1mm}
             {\fontsize{8.5}{11}\selectfont\color{rbruGold!80} ลิขสิทธิ์ของมหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ พ.ศ. 2569\par}
         \end{center}
