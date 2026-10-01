@@ -459,9 +459,9 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
 
           // 3.1 แถบข้อมูลอุณหภูมิและความชื้นสิ่งแวดล้อมด้านบน (Top Environmental Telemetry HUD Strip)
           Positioned(
-            top: 70,
-            left: 16,
-            right: 16,
+            top: 66,
+            left: 60,
+            right: 12,
             child: SafeArea(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -571,25 +571,25 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
                       children: [
                         // หัวข้อและสถานะความสอดคล้อง
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.compare_arrows_rounded, color: AppTheme.primaryCyan, size: 18),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  'เปรียบเทียบเซนเซอร์และภาพถ่าย Live',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                            const Icon(Icons.compare_arrows_rounded, color: AppTheme.primaryCyan, size: 18),
+                            const SizedBox(width: 6),
+                            const Expanded(
+                              child: Text(
+                                'เปรียบเทียบเซนเซอร์และภาพถ่าย Live',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
-                              ],
+                              ),
                             ),
-                            if (comparison != null)
+                            if (comparison != null) ...[
+                              const SizedBox(width: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                                 decoration: BoxDecoration(
                                   color: comparison.statusColor.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
@@ -604,6 +604,7 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
                                   ),
                                 ),
                               ),
+                            ],
                           ],
                         ),
 
@@ -751,18 +752,18 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
                             border: Border.all(color: Colors.white12),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.sensors_rounded, size: 14, color: AppTheme.primaryEmerald),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    'สภาวะดิน อุณหภูมิ ${vm.temperatureC.toStringAsFixed(1)} °C | ความชื้น ${vm.usbMoisture.toStringAsFixed(1)} %RH',
-                                    style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w500),
-                                  ),
-                                ],
+                              const Icon(Icons.sensors_rounded, size: 14, color: AppTheme.primaryEmerald),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  'สภาวะดิน อุณหภูมิ ${vm.temperatureC.toStringAsFixed(1)} °C | ความชื้น ${vm.usbMoisture.toStringAsFixed(1)} %',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w500),
+                                ),
                               ),
+                              const SizedBox(width: 6),
                               Text(
                                 'EC ${vm.usbEc} µS',
                                 style: const TextStyle(fontSize: 9.5, color: AppTheme.warningOrange, fontWeight: FontWeight.w600),
@@ -780,16 +781,19 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
                               Expanded(
                                 child: Text(
                                   comparison.agreementStatus,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 9.5,
                                     fontWeight: FontWeight.w600,
                                     color: comparison.statusColor,
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 4),
                               Text(
                                 'GPS ${vm.liveLatitude?.toStringAsFixed(4) ?? vm.currentTargetSite['lat']}, ${vm.liveLongitude?.toStringAsFixed(4) ?? vm.currentTargetSite['lng']}',
-                                style: const TextStyle(fontSize: 9, color: Colors.white38),
+                                style: const TextStyle(fontSize: 8.5, color: Colors.white38),
                               ),
                             ],
                           ),

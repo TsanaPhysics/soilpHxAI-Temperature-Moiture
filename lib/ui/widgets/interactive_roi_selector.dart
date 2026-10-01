@@ -317,7 +317,7 @@ class _InteractiveRoiSelectorState extends State<InteractiveRoiSelector> {
         // 2. แถบเมนูปรับขนาด รูปร่างของ detection พร้อมแถบเฉดสีตามเกณฑ์คู่มือทางวิชาการ
         Positioned(
           left: 12,
-          top: 105,
+          top: 118,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
