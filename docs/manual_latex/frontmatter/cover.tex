@@ -14,30 +14,32 @@
     \draw[line width=2.5pt, color=rbruGold] ($(current page.north west)+(25mm,-16mm)$) -- ($(current page.north east)+(-20mm,-16mm)$);
     \draw[line width=0.8pt, color=rbruGold!50] ($(current page.north west)+(25mm,-18mm)$) -- ($(current page.north east)+(-20mm,-18mm)$);
     
-    % Header Banner: กระชับ บรรทัดเดียว ตามคำสั่ง
+    % Header Banner: ปรับเป็น "การออกแบบและพัฒนางานวิจัยเกษตรดิจิทัลด้วยปัญญาประดิษฐ์" บรรทัดเดียว
     \node[anchor=north west, text width=165mm] at ($(current page.north west)+(25mm,-21mm)$) {
-        {\fontsize{10}{13}\selectfont\bfseries\color{rbruGold} คู่มือวิจัยฉบับสมบูรณ์ \quad \textcolor{white!40}{|} \quad \textnormal{\textcolor{white!85}{ทุนอุดหนุนการวิจัยและนวัตกรรม มหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ พ.ศ. 2569}}\par}
+        {\fontsize{11}{14}\selectfont\bfseries\color{rbruGold} การออกแบบและพัฒนางานวิจัยเกษตรดิจิทัลด้วยปัญญาประดิษฐ์\par}
     };
     
-    % Main Title Box: ปรับชื่อหนังสือเหลือ 2 บรรทัด ตัดคำต่อเนื่อง ไม่ฉีกคำ
-    \node[anchor=north, text width=175mm] at ($(current page.north)+(2.5mm,-32mm)$) {
+    % Main Title Box: ปรับชื่อหนังสือ 3 บรรทัดตามคำสั่ง พร้อมภาษาอังกฤษที่สอดคล้องกัน
+    \node[anchor=north, text width=175mm] at ($(current page.north)+(2.5mm,-31mm)$) {
         \begin{center}
-            {\fontsize{22}{29}\selectfont\bfseries\color{white}
-            การพัฒนาต้นแบบเครื่องวัดค่า pH ดินภาคสนามความแม่นยำสูง\\
-            ด้วยการชดเชยอุณหภูมิอัจฉริยะโดยโครงข่ายประสาทเทียม\par}
+            {\fontsize{20.5}{27.5}\selectfont\bfseries\color{white}
+            การพัฒนาต้นแบบเครื่องวัดความเป็นกรด-ด่างของดิน\\
+            ภาคสนามความแม่นยำสูงด้วยการชดเชยอุณหภูมิและความชื้น\\
+            โดยใช้โครงข่ายประสาทเทียมอัจฉริยะ\par}
             \vspace{2.5mm}
             {\color{rbruGold}\rule{0.55\textwidth}{1.5pt}\par}
             \vspace{2.5mm}
-            {\fontsize{10.5}{14}\selectfont\itshape\color{white!85}
+            {\fontsize{10}{13.5}\selectfont\itshape\color{white!85}
             Development of High-Accuracy Field-Portable Soil pH Meter Prototype\\
-            with Intelligent Temperature Compensation Using Neural Networks\par}
+            with Intelligent Temperature and Moisture Compensation\\
+            Using Artificial Neural Networks\par}
             \vspace{2mm}
-            {\fontsize{12}{15}\selectfont\bfseries\color{rbruCyan} [ SoilpHTxAI Edge AI System ]\par}
+            {\fontsize{11.5}{14}\selectfont\bfseries\color{rbruCyan} [ SoilpHTxAI Edge AI System ]\par}
         \end{center}
     };
 
-    % Real Smartphone Dual Device Mockup: ภาพประกอบปกเดิมที่สวยงาม จัดระยะห่างไม่ให้ซ้อนทับตัวหนังสือ
-    \node[anchor=center] at ($(current page.north)+(2.5mm,-162mm)$) {
+    % Real Smartphone Dual Device Mockup: ภาพประกอบเครื่องคู่ จัดระยะห่างไม่ให้ซ้อนทับตัวหนังสือ
+    \node[anchor=center] at ($(current page.north)+(2.5mm,-168mm)$) {
         \begin{tikzpicture}
             % ========================================================
             % SECONDARY PHONE (Right: Edge ML Studio Screen)
@@ -92,7 +94,7 @@
         \end{tikzpicture}
     };
 
-    % Publisher & Attribution Footer (ปลอด "จัดทำขึ้นโดย" และปลอดกล่องคณะผู้วิจัยตามสั่ง)
+    % Publisher & Attribution Footer
     \node[anchor=south, text width=160mm] at ($(current page.south)+(2.5mm,14mm)$) {
         \begin{center}
             {\fontsize{13}{17}\selectfont\bfseries\color{white} ผศ.ดร.ชีวะ ทัศนา\par}
