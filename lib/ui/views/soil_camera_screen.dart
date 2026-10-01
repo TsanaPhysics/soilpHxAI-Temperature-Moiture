@@ -3,9 +3,12 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../core/constants/ph_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/multi_color_space_service.dart';
+import '../../services/optical_ph_estimator.dart';
 import '../../viewmodels/soil_pht_viewmodel.dart';
+import '../widgets/interactive_roi_selector.dart';
 
 class SoilCameraScreen extends StatefulWidget {
   const SoilCameraScreen({super.key});
@@ -15,20 +18,34 @@ class SoilCameraScreen extends StatefulWidget {
 }
 
 class _SoilCameraScreenState extends State<SoilCameraScreen> {
-  CameraController? _controller;
+  CameraController? _cameraController;
   List<CameraDescription> _cameras = [];
   int _selectedCameraIndex = 0;
-  bool _isInitialized = false;
+  bool _isCameraInitialized = false;
   bool _isCapturing = false;
   FlashMode _flashMode = FlashMode.off;
+
+  // โหมดการทำงาน (Live Real-Time Analysis vs Still Photo)
+  bool _isLiveAnalysisEnabled = true;
+  bool _isProcessingFrame = false;
+  bool _isStreaming = false;
+  DateTime _lastFrameProcessedTime = DateTime.now();
+
+  // สถานะการเลือกพื้นที่ ROI
+  RoiShape _currentRoiShape = RoiShape.rectangle;
+  RoiData? _currentRoiData;
+
+  // ผลการวิเคราะห์สีและค่า pH เชิงแสง
+  MultiColorMetric? _liveColorMetric;
+  PhComparisonResult? _comparisonResult;
 
   @override
   void initState() {
     super.initState();
-    _initCameras();
+    _initCamera();
   }
 
-  Future<void> _initCameras() async {
+  Future<void> _initCamera() async {
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) return;
@@ -40,17 +57,25 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
 
       await _setupController(_cameras[_selectedCameraIndex]);
     } catch (e) {
-      debugPrint('[SoilCameraScreen] Camera error: $e');
+      debugPrint('[SoilCameraScreen] Camera init error $e');
     }
   }
 
   Future<void> _setupController(CameraDescription camera) async {
-    await _controller?.dispose();
+    if (_isStreaming && _cameraController != null) {
+      try {
+        await _cameraController!.stopImageStream();
+      } catch (_) {}
+      _isStreaming = false;
+    }
+
+    await _cameraController?.dispose();
+
     final controller = CameraController(
       camera,
-      ResolutionPreset.high,
+      ResolutionPreset.medium,
       enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
+      imageFormatGroup: ImageFormatGroup.yuv420,
     );
 
     try {
@@ -58,61 +83,234 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
       await controller.setFlashMode(_flashMode);
       if (mounted) {
         setState(() {
-          _controller = controller;
-          _isInitialized = true;
+          _cameraController = controller;
+          _isCameraInitialized = true;
         });
+
+        if (_isLiveAnalysisEnabled) {
+          _startLiveAnalysisStream();
+        }
       }
     } catch (e) {
-      debugPrint('[SoilCameraScreen] Controller init error: $e');
+      debugPrint('[SoilCameraScreen] Controller setup error $e');
     }
   }
 
-  Future<void> _toggleCamera() async {
+  void _startLiveAnalysisStream() {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+    if (_isStreaming) return;
+
+    try {
+      _isStreaming = true;
+      _cameraController!.startImageStream((CameraImage image) {
+        final now = DateTime.now();
+        // ประมวลผลเฟรมทุกๆ 150 ms เพื่อความลื่นไหลระดับ 60 FPS ของ UI
+        if (_isProcessingFrame || now.difference(_lastFrameProcessedTime).inMilliseconds < 150) {
+          return;
+        }
+
+        _isProcessingFrame = true;
+        _lastFrameProcessedTime = now;
+        _analyzeCameraFrame(image);
+      });
+    } catch (e) {
+      debugPrint('[SoilCameraScreen] Start stream error $e');
+      _isStreaming = false;
+    }
+  }
+
+  Future<void> _stopLiveAnalysisStream() async {
+    if (_cameraController != null && _isStreaming) {
+      try {
+        await _cameraController!.stopImageStream();
+      } catch (_) {}
+      _isStreaming = false;
+    }
+  }
+
+  void _analyzeCameraFrame(CameraImage image) {
+    try {
+      if (!mounted) {
+        _isProcessingFrame = false;
+        return;
+      }
+
+      final vm = Provider.of<SoilPhtViewModel>(context, listen: false);
+      final double sensorPh = vm.displayedPh;
+
+      final int width = image.width;
+      final int height = image.height;
+
+      // แปลงพิกัด ROI บนหน้าจอเป็นพิกัดใน Image Frame
+      final renderBox = context.findRenderObject() as RenderBox?;
+      final screenSize = renderBox?.size ?? const Size(400, 800);
+
+      final roi = _currentRoiData;
+      int centerX = width ~/ 2;
+      int centerY = height ~/ 2;
+      int sampleRadius = 24;
+
+      if (roi != null) {
+        final scaleX = width / screenSize.width;
+        final scaleY = height / screenSize.height;
+        centerX = (roi.center.dx * scaleX).toInt().clamp(10, width - 10);
+        centerY = (roi.center.dy * scaleY).toInt().clamp(10, height - 10);
+
+        if (roi.shape == RoiShape.circle) {
+          sampleRadius = (roi.radius * scaleX * 0.4).toInt().clamp(8, 60);
+        } else {
+          sampleRadius = (roi.width * scaleX * 0.25).toInt().clamp(8, 60);
+        }
+      }
+
+      // สุ่มตัวอย่างพิกเซลในพื้นที่ ROI จาก YUV420 Planes
+      final planeY = image.planes[0];
+      final planeU = image.planes[1];
+      final planeV = image.planes[2];
+
+      final uvRowStride = planeU.bytesPerRow;
+      final uvPixelStride = planeU.bytesPerPixel ?? 1;
+
+      int totalR = 0;
+      int totalG = 0;
+      int totalB = 0;
+      int count = 0;
+
+      final int startY = (centerY - sampleRadius).clamp(0, height - 1);
+      final int endY = (centerY + sampleRadius).clamp(0, height - 1);
+      final int startX = (centerX - sampleRadius).clamp(0, width - 1);
+      final int endX = (centerX + sampleRadius).clamp(0, width - 1);
+
+      // ก้าวข้ามพิกเซลทีละ 2 เพื่อความรวดเร็วในการประมวลผล
+      for (int y = startY; y <= endY; y += 2) {
+        final int yOffset = y * planeY.bytesPerRow;
+        final int uvYOffset = (y ~/ 2) * uvRowStride;
+
+        for (int x = startX; x <= endX; x += 2) {
+          final int yVal = planeY.bytes[yOffset + x];
+          final int uvIndex = uvYOffset + (x ~/ 2) * uvPixelStride;
+
+          final int uVal = planeU.bytes[uvIndex];
+          final int vVal = planeV.bytes[uvIndex];
+
+          // สูตรแปลง YUV เป็น RGB (ITU-R BT.601)
+          int r = (yVal + (1.402 * (vVal - 128))).round();
+          int g = (yVal - (0.344136 * (uVal - 128)) - (0.714136 * (vVal - 128))).round();
+          int b = (yVal + (1.772 * (uVal - 128))).round();
+
+          totalR += r.clamp(0, 255);
+          totalG += g.clamp(0, 255);
+          totalB += b.clamp(0, 255);
+          count++;
+        }
+      }
+
+      if (count > 0 && mounted) {
+        final int avgR = totalR ~/ count;
+        final int avgG = totalG ~/ count;
+        final int avgB = totalB ~/ count;
+
+        final metric = MultiColorSpaceService.fromRgb(avgR, avgG, avgB);
+        final comparison = OpticalPhEstimator.compare(
+          currentMetric: metric,
+          sensorPh: sensorPh,
+        );
+
+        setState(() {
+          _liveColorMetric = metric;
+          _comparisonResult = comparison;
+        });
+      }
+    } catch (e) {
+      debugPrint('[SoilCameraScreen] Frame processing error $e');
+    } finally {
+      _isProcessingFrame = false;
+    }
+  }
+
+  Future<void> _toggleLiveAnalysis() async {
+    setState(() {
+      _isLiveAnalysisEnabled = !_isLiveAnalysisEnabled;
+    });
+
+    if (_isLiveAnalysisEnabled) {
+      _startLiveAnalysisStream();
+    } else {
+      await _stopLiveAnalysisStream();
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    if (_cameraController == null) return;
+    final newMode = _flashMode == FlashMode.off ? FlashMode.torch : FlashMode.off;
+    try {
+      await _cameraController!.setFlashMode(newMode);
+      setState(() => _flashMode = newMode);
+    } catch (_) {}
+  }
+
+  Future<void> _switchCamera() async {
     if (_cameras.length < 2) return;
     _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras.length;
     await _setupController(_cameras[_selectedCameraIndex]);
   }
 
-  Future<void> _toggleFlash() async {
-    if (_controller == null || !_controller!.value.isInitialized) return;
-    FlashMode nextMode;
-    switch (_flashMode) {
-      case FlashMode.off:
-        nextMode = FlashMode.torch;
-        break;
-      case FlashMode.torch:
-        nextMode = FlashMode.auto;
-        break;
-      case FlashMode.auto:
-      default:
-        nextMode = FlashMode.off;
-        break;
-    }
-    await _controller!.setFlashMode(nextMode);
-    setState(() => _flashMode = nextMode);
-  }
-
-  Future<void> _takeSoilPhoto(SoilPhtViewModel vm) async {
-    if (_controller == null || !_controller!.value.isInitialized || _isCapturing) return;
-
+  Future<void> _capturePhoto() async {
+    if (_isCapturing) return;
     setState(() => _isCapturing = true);
+
+    final vm = context.read<SoilPhtViewModel>();
+
     try {
-      final XFile photo = await _controller!.takePicture();
-      final Directory docDir = await getApplicationDocumentsDirectory();
-      final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      final String savedPath = '${docDir.path}/soil_photo_$timestamp.jpg';
+      final wasStreaming = _isStreaming;
+      if (wasStreaming) {
+        await _stopLiveAnalysisStream();
+      }
 
-      await File(photo.path).copy(savedPath);
+      if (_cameraController != null && _cameraController!.value.isInitialized) {
+        final xFile = await _cameraController!.takePicture();
+        final bytes = await xFile.readAsBytes();
 
-      if (mounted) {
-        _showSuccessDialog(context, vm, savedPath);
+        // บันทึกไฟล์รูปภาพลงโฟลเดอร์แอป
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'soil_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final savedFile = File('${appDir.path}/$fileName');
+        await savedFile.writeAsBytes(bytes);
+
+        // บันทึกลงฐานข้อมูลตัวอย่างดินภาคสนาม
+        vm.logCurrentFieldSample();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppTheme.surfaceCard,
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: AppTheme.primaryEmerald, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'บันทึกภาพพร้อมข้อมูลเซนเซอร์ ${vm.displayedPh.toStringAsFixed(2)} pH สำเร็จ',
+                      style: const TextStyle(fontSize: 12, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+
+      if (wasStreaming && _isLiveAnalysisEnabled) {
+        _startLiveAnalysisStream();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppTheme.dangerRose,
-            content: Text('ถ่ายภาพไม่สำเร็จ: $e'),
+            content: Text('เกิดข้อผิดพลาดในการบันทึกภาพ $e'),
           ),
         );
       }
@@ -121,250 +319,571 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
     }
   }
 
-  void _showSuccessDialog(BuildContext context, SoilPhtViewModel vm, String filePath) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.check_circle, color: AppTheme.primaryEmerald),
-            SizedBox(width: 8),
-            Text('บันทึกภาพตัวอย่างดินสำเร็จ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.file(
-                File(filePath),
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text('แปลงศึกษา: ${vm.currentTargetSite['village']} (${vm.currentTargetSite['province']})',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.neutralText)),
-            Text('พิกัด GPS: ${vm.liveLatitude?.toStringAsFixed(6) ?? vm.currentTargetSite['lat']}, ${vm.liveLongitude?.toStringAsFixed(6) ?? vm.currentTargetSite['lng']}',
-                style: const TextStyle(fontSize: 11, color: AppTheme.primaryCyan)),
-            const SizedBox(height: 4),
-            Text('pH ที่วัดได้: ${vm.displayedPh.toStringAsFixed(2)} pH | ${vm.potentialMv.toStringAsFixed(1)} mV | ${vm.temperatureC.toStringAsFixed(1)} °C',
-                style: const TextStyle(fontSize: 11, color: AppTheme.accentNeon)),
-          ],
-        ),
-        actions: [
-          TextButton.icon(
-            icon: const Icon(Icons.share, size: 18, color: AppTheme.primaryCyan),
-            label: const Text('แชร์ภาพ', style: TextStyle(color: AppTheme.primaryCyan)),
-            onPressed: () {
-              Navigator.pop(context);
-              SharePlus.instance.share(
-                ShareParams(
-                  text: 'ภาพตัวอย่างดินวิจัย SoilpHTxAI: pH ${vm.displayedPh.toStringAsFixed(2)} ที่ ${vm.currentTargetSite['village']}',
-                  files: [XFile(filePath)],
-                ),
-              );
-            },
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryEmerald,
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('ตกลง'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   void dispose() {
-    _controller?.dispose();
+    _cameraController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final vm = Provider.of<SoilPhtViewModel>(context);
-
-    if (!_isInitialized || _controller == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('กล้องบันทึกภาพดิน (Soil Vision)')),
-        body: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AppTheme.primaryEmerald),
-              SizedBox(height: 16),
-              Text('กำลังเปิดกล้องสมาร์ทโฟน...', style: TextStyle(color: AppTheme.mutedText)),
-            ],
-          ),
-        ),
-      );
-    }
+    final vm = context.watch<SoilPhtViewModel>();
+    final double sensorPh = vm.displayedPh;
+    final comparison = _comparisonResult;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
-        fit: StackFit.expand,
         children: [
-          // Live Camera Preview
-          CameraPreview(_controller!),
-
-          // Target Crosshair / Reticle for Soil Probe Tip
-          Center(
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.accentNeon.withValues(alpha: 0.7), width: 2),
-                borderRadius: BorderRadius.circular(12),
+          // 1. กล้องถ่ายภาพสด (Camera Preview)
+          if (_isCameraInitialized && _cameraController != null)
+            SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _cameraController!.value.previewSize?.height ?? 1,
+                  height: _cameraController!.value.previewSize?.width ?? 1,
+                  child: CameraPreview(_cameraController!),
+                ),
               ),
-              child: Stack(
+            )
+          else
+            const Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryEmerald),
+            ),
+
+          // 2. ตัวเลือกพื้นที่วิเคราะห์ ROI (Interactive Multi-Shape ROI Overlay) พร้อมแถบเกณฑ์เฉดสีทางวิชาการ
+          Positioned.fill(
+            child: InteractiveRoiSelector(
+              currentShape: _currentRoiShape,
+              activeColor: comparison != null ? comparison.statusColor : AppTheme.primaryCyan,
+              livePh: comparison?.visionPh ?? sensorPh,
+              liveColorMetric: _liveColorMetric,
+              liveStatusLabel: comparison?.agreementStatus ?? PhColors.getLabelForPh(sensorPh),
+              temperature: vm.temperatureC,
+              moisture: vm.usbMoisture,
+              onShapeChanged: (shape) {
+                setState(() => _currentRoiShape = shape);
+              },
+              onRoiUpdated: (roi) {
+                _currentRoiData = roi;
+              },
+            ),
+          ),
+
+          // 3. แถบควบคุมด้านบน (Top Action Bar)
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.accentNeon,
-                        shape: BoxShape.circle,
+                  _buildCircleBtn(
+                    icon: Icons.arrow_back_rounded,
+                    onTap: () => Navigator.pop(context),
+                  ),
+
+                  // ป้ายแสดงสถานะ Live Analysis
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _isLiveAnalysisEnabled
+                          ? const Color(0xE60A0F1D)
+                          : Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _isLiveAnalysisEnabled ? AppTheme.primaryEmerald : Colors.white24,
+                        width: 1.2,
                       ),
                     ),
-                  ),
-                  const Positioned(
-                    bottom: 6,
-                    left: 0,
-                    right: 0,
-                    child: Text(
-                      'จัดกึ่งกลางตัวอย่างดิน',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 9, color: AppTheme.accentNeon, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Top Overlay Bar (Controls & Geotags)
-          Positioned(
-            top: 40,
-            left: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          '${vm.currentTargetSite['village']} (${vm.currentTargetSite['province']})',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _isLiveAnalysisEnabled ? AppTheme.primaryEmerald : Colors.grey,
+                            boxShadow: _isLiveAnalysisEnabled
+                                ? [
+                                    BoxShadow(
+                                      color: AppTheme.primaryEmerald.withValues(alpha: 0.8),
+                                      blurRadius: 6,
+                                    ),
+                                  ]
+                                : null,
+                          ),
                         ),
+                        const SizedBox(width: 6),
                         Text(
-                          'GPS: ${vm.liveLatitude?.toStringAsFixed(5) ?? vm.currentTargetSite['lat']}, ${vm.liveLongitude?.toStringAsFixed(5) ?? vm.currentTargetSite['lng']}',
-                          style: const TextStyle(fontSize: 10, color: AppTheme.primaryCyan),
+                          _isLiveAnalysisEnabled ? 'LIVE VISION' : 'STILL MODE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                            color: _isLiveAnalysisEnabled ? AppTheme.primaryEmerald : Colors.white70,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      _flashMode == FlashMode.torch ? Icons.flash_on : Icons.flash_off,
-                      color: _flashMode == FlashMode.torch ? AppTheme.warningOrange : Colors.white,
-                    ),
-                    onPressed: _toggleFlash,
+
+                  // กลุ่มปุ่มควบคุมกล้อง (สลับโหมด Live, แฟลช, สลับกล้อง)
+                  Row(
+                    children: [
+                      _buildCircleBtn(
+                        icon: _isLiveAnalysisEnabled ? Icons.videocam_rounded : Icons.videocam_off_rounded,
+                        color: _isLiveAnalysisEnabled ? AppTheme.primaryEmerald : Colors.white70,
+                        onTap: _toggleLiveAnalysis,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildCircleBtn(
+                        icon: _flashMode == FlashMode.torch ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                        color: _flashMode == FlashMode.torch ? AppTheme.warningOrange : Colors.white70,
+                        onTap: _toggleFlash,
+                      ),
+                      if (_cameras.length > 1) ...[
+                        const SizedBox(width: 8),
+                        _buildCircleBtn(
+                          icon: Icons.flip_camera_ios_rounded,
+                          onTap: _switchCamera,
+                        ),
+                      ],
+                    ],
                   ),
-                  if (_cameras.length > 1)
-                    IconButton(
-                      icon: const Icon(Icons.flip_camera_android, color: Colors.white),
-                      onPressed: _toggleCamera,
-                    ),
                 ],
               ),
             ),
           ),
 
-          // Bottom Overlay Bar (Telemetry Badge & Shutter Button)
+          // 3.1 แถบข้อมูลอุณหภูมิและความชื้นสิ่งแวดล้อมด้านบน (Top Environmental Telemetry HUD Strip)
           Positioned(
-            bottom: 30,
+            top: 70,
             left: 16,
             right: 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Live Soil Parameter Telemetry Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceCard.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.primaryEmerald.withValues(alpha: 0.4)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildMiniParam('pH วัดได้', '${vm.displayedPh.toStringAsFixed(2)} pH', AppTheme.accentNeon),
-                      _buildMiniParam('ศักย์ E', '${vm.potentialMv.toStringAsFixed(1)} mV', AppTheme.primaryCyan),
-                      _buildMiniParam('อุณหภูมิ T', '${vm.temperatureC.toStringAsFixed(1)} °C', AppTheme.warningOrange),
-                      _buildMiniParam('ความชื้น', '${vm.usbMoisture.toStringAsFixed(1)} %', AppTheme.infoBlue),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                // Big Capture Button
-                GestureDetector(
-                  onTap: _isCapturing ? null : () => _takeSoilPhoto(vm),
-                  child: Container(
-                    width: 72,
-                    height: 72,
+            child: SafeArea(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // อุณหภูมิดิน
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
-                      color: _isCapturing ? Colors.grey : AppTheme.primaryEmerald,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryEmerald.withValues(alpha: 0.5),
-                          blurRadius: 16,
-                          spreadRadius: 2,
+                      color: const Color(0xE60A0F1D),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.warningOrange.withValues(alpha: 0.8), width: 1.2),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.thermostat_rounded, size: 16, color: AppTheme.warningOrange),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'อุณหภูมิดิน',
+                          style: TextStyle(fontSize: 10.5, color: Colors.white70, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${vm.temperatureC.toStringAsFixed(1)} °C',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.warningOrange,
+                            letterSpacing: 0.4,
+                          ),
                         ),
                       ],
                     ),
-                    child: _isCapturing
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Icon(Icons.camera_alt, color: Colors.black, size: 34),
                   ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'แตะเพื่อบันทึกภาพหลักฐานตัวอย่างดิน',
-                  style: TextStyle(fontSize: 10, color: Colors.white70),
-                ),
-              ],
+
+                  const SizedBox(width: 8),
+
+                  // ความชื้นในดิน
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xE60A0F1D),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.primaryCyan.withValues(alpha: 0.8), width: 1.2),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.water_drop_rounded, size: 15, color: AppTheme.primaryCyan),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'ความชื้น',
+                          style: TextStyle(fontSize: 10.5, color: Colors.white70, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${vm.usbMoisture.toStringAsFixed(1)} %',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryCyan,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 4. แผงวิเคราะห์และเปรียบเทียบค่าแบบเรียลไทม์ (Live Sensor vs. Vision HUD Panel)
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 16,
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF00A0F1D),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: comparison != null ? comparison.statusColor.withValues(alpha: 0.6) : AppTheme.surfaceCard,
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // หัวข้อและสถานะความสอดคล้อง
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.compare_arrows_rounded, color: AppTheme.primaryCyan, size: 18),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'เปรียบเทียบเซนเซอร์และภาพถ่าย Live',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (comparison != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: comparison.statusColor.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: comparison.statusColor, width: 1),
+                                ),
+                                child: Text(
+                                  'Δ ${comparison.deltaPh.toStringAsFixed(2)} pH',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: comparison.statusColor,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // คอลัมน์คู่แสดงค่า Sensor pH เทียบกับ Vision Optical pH
+                        Row(
+                          children: [
+                            // ฝั่งซ้าย: ค่าจากเซนเซอร์โพรบ
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surface.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppTheme.primaryCyan.withValues(alpha: 0.3)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('เซนเซอร์โพรบ (Probe)', style: TextStyle(fontSize: 10, color: Colors.white60)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${sensorPh.toStringAsFixed(2)} pH',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: PhColors.getColorForPh(sensorPh),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.warningOrange.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: AppTheme.warningOrange.withValues(alpha: 0.4), width: 0.8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.thermostat_rounded, size: 11, color: AppTheme.warningOrange),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                '${vm.temperatureC.toStringAsFixed(1)}°C',
+                                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: AppTheme.warningOrange),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryCyan.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: AppTheme.primaryCyan.withValues(alpha: 0.4), width: 0.8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.water_drop_rounded, size: 10, color: AppTheme.primaryCyan),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                '${vm.usbMoisture.toStringAsFixed(1)}%',
+                                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: AppTheme.primaryCyan),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            // ฝั่งขวา: ค่าจากการวิเคราะห์ภาพถ่าย Live
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surface.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: comparison != null ? comparison.statusColor.withValues(alpha: 0.4) : Colors.white12,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('ภาพถ่าย Live (Vision)', style: TextStyle(fontSize: 10, color: Colors.white60)),
+                                        if (_liveColorMetric != null)
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: _liveColorMetric!.toColor,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 1),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      comparison != null
+                                          ? '${comparison.visionPh.toStringAsFixed(2)} pH'
+                                          : 'กำลังประมวลผล',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: comparison != null
+                                            ? PhColors.getColorForPh(comparison.visionPh)
+                                            : Colors.white38,
+                                      ),
+                                    ),
+                                    Text(
+                                      _liveColorMetric != null
+                                          ? 'H ${_liveColorMetric!.hue.toStringAsFixed(0)}° | L* ${_liveColorMetric!.labL.toStringAsFixed(0)}'
+                                          : 'สแกนพื้นที่เป้าหมาย',
+                                      style: const TextStyle(fontSize: 9, color: Colors.white54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // แถบสรุปค่าตรวจวัดสิ่งแวดล้อมภาคสนาม
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.sensors_rounded, size: 14, color: AppTheme.primaryEmerald),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'สภาวะดิน อุณหภูมิ ${vm.temperatureC.toStringAsFixed(1)} °C | ความชื้น ${vm.usbMoisture.toStringAsFixed(1)} %RH',
+                                    style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                'EC ${vm.usbEc} µS',
+                                style: const TextStyle(fontSize: 9.5, color: AppTheme.warningOrange, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        if (comparison != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.verified_rounded, size: 13, color: comparison.statusColor),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  comparison.agreementStatus,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: comparison.statusColor,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                'GPS ${vm.liveLatitude?.toStringAsFixed(4) ?? vm.currentTargetSite['lat']}, ${vm.liveLongitude?.toStringAsFixed(4) ?? vm.currentTargetSite['lng']}',
+                                style: const TextStyle(fontSize: 9, color: Colors.white38),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ปุ่มถ่ายภาพพร้อมป้าย 7 Tiers
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // ปุ่มจำลองหรือสถิติ
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              vm.isUsbConnected ? 'USB-C' : 'SIMULATION',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: vm.isUsbConnected ? AppTheme.primaryEmerald : AppTheme.warningOrange,
+                              ),
+                            ),
+                            Text(
+                              '${vm.potentialMv.toStringAsFixed(0)} mV',
+                              style: const TextStyle(fontSize: 8, color: Colors.white54),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ปุ่มชัตเตอร์ถ่ายภาพ
+                      GestureDetector(
+                        onTap: _isCapturing ? null : _capturePhoto,
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            color: _isCapturing ? Colors.grey : AppTheme.primaryEmerald,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryEmerald.withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: _isCapturing
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                )
+                              : const Icon(Icons.camera_alt_rounded, size: 34, color: Colors.black),
+                        ),
+                      ),
+
+                      // ป้ายแสดงจำนวนแถบสีอ้างอิงมาตรฐาน
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('7 TIERS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.warningOrange)),
+                            Text('TABLE 2.3', style: TextStyle(fontSize: 8, color: Colors.white54)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -372,14 +891,23 @@ class _SoilCameraScreenState extends State<SoilCameraScreen> {
     );
   }
 
-  Widget _buildMiniParam(String label, String value, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 9, color: AppTheme.mutedText)),
-        const SizedBox(height: 2),
-        Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-      ],
+  Widget _buildCircleBtn({
+    required IconData icon,
+    required VoidCallback onTap,
+    Color color = Colors.white,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white24, width: 1),
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
     );
   }
 }

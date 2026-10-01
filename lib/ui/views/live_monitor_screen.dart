@@ -6,6 +6,7 @@ import '../../services/durian_soil_expert_service.dart';
 import '../../services/usb_soil_sensor_service.dart';
 import '../../viewmodels/soil_pht_viewmodel.dart';
 import '../widgets/glassmorphic_card.dart';
+import '../widgets/ph_circular_gauge.dart';
 import '../widgets/nernst_formula_dialog.dart';
 import 'soil_camera_screen.dart';
 
@@ -23,7 +24,7 @@ class LiveMonitorScreen extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('SoilpHTxAI : Live Field Monitor', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('SoilpHTxAI Live Field Monitor', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             Text(
               '${vm.currentTargetSite['village']} ${vm.currentTargetSite['province']}',
               style: const TextStyle(fontSize: 11, color: AppTheme.primaryCyan),
@@ -188,7 +189,7 @@ class LiveMonitorScreen extends StatelessWidget {
                 Row(
                   children: [
                     const Text(
-                      'พอร์ต USB-C: ',
+                      'พอร์ต USB-C ',
                       style: TextStyle(fontSize: 11, color: AppTheme.mutedText),
                     ),
                     Expanded(
@@ -275,7 +276,7 @@ class LiveMonitorScreen extends StatelessWidget {
           Expanded(
             child: Text(
               vm.isAiCompensationEnabled
-                  ? 'AI ชดเชย: เปิด (R² 0.999)'
+                  ? 'AI ชดเชย เปิด (R² 0.999)'
                   : 'Nernst มาตรฐาน',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -301,137 +302,14 @@ class LiveMonitorScreen extends StatelessWidget {
 
   Widget _buildMainGaugeCard(BuildContext context, SoilPhtViewModel vm, Map<String, dynamic> diag) {
     final double ph = vm.displayedPh;
-    final Color statusColor = diag['color'] is Color
-        ? (diag['color'] as Color)
-        : Color(diag['color'] as int);
+    final double raw = vm.currentRawPh;
+    final double delta = ph - raw;
 
-    return GlassmorphicCard(
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                flex: 3,
-                child: Text(
-                  vm.isUsbConnected ? 'ค่า pH ปัจจุบัน (USB Probe)' : 'ค่า pH ปัจจุบัน (Current pH)',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.mutedText),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                flex: 2,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: statusColor, width: 1),
-                  ),
-                  child: Text(
-                    diag['status'],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // pH Numerical Big Display
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                ph.toStringAsFixed(2),
-                style: TextStyle(
-                  fontSize: 54,
-                  fontWeight: FontWeight.w900,
-                  color: statusColor,
-                  letterSpacing: -1,
-                  shadows: [
-                    Shadow(
-                      color: statusColor.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'pH',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.mutedText),
-              ),
-            ],
-          ),
-
-          // Linear pH Scale Gauge Bar
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              height: 10,
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFFE53935), // 3.0 Very Acidic
-                          Color(0xFFFB8C00), // 4.5 Acidic
-                          Color(0xFFFDD835), // 5.5 Mild
-                          Color(0xFF43A047), // 6.5 Optimum Durian
-                          Color(0xFF00ACC1), // 7.5 Neutral-Alkaline
-                          Color(0xFF1E88E5), // 8.5
-                          Color(0xFF8E24AA), // 10.0 Highly Alkaline
-                        ],
-                      ),
-                    ),
-                  ),
-                  FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: ((ph - 3.0) / 7.0).clamp(0.0, 1.0),
-                    child: Container(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        width: 4,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Flexible(
-                child: Text('3.0 กรด', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9, color: AppTheme.mutedText)),
-              ),
-              Flexible(
-                flex: 2,
-                child: Text('5.5-6.5 เหมาะสมทุเรียน', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 9, color: AppTheme.accentNeon, fontWeight: FontWeight.bold)),
-              ),
-              Flexible(
-                child: Text('10.0 ด่าง', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: TextStyle(fontSize: 9, color: AppTheme.mutedText)),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return PhCircularGauge(
+      currentPh: ph,
+      rawPh: raw,
+      isAiActive: vm.isAiCompensationEnabled,
+      deltaPh: delta,
     );
   }
 
@@ -703,7 +581,7 @@ class LiveMonitorScreen extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'แนวทางจัดการ: ${diag['action']} (แนะนำปูนโดโลไมต์ $limeAmount กก./ไร่)',
+                    'แนวทางจัดการ ${diag['action']} (แนะนำปูนโดโลไมต์ $limeAmount กก./ไร่)',
                     style: const TextStyle(fontSize: 11, color: AppTheme.accentNeon, height: 1.3),
                   ),
                 ),
@@ -784,7 +662,7 @@ class LiveMonitorScreen extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  'pH อ้างอิง: ${vm.targetGroundTruthPh.toStringAsFixed(2)}',
+                  'pH อ้างอิง ${vm.targetGroundTruthPh.toStringAsFixed(2)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 11, color: AppTheme.mutedText),
@@ -792,7 +670,7 @@ class LiveMonitorScreen extends StatelessWidget {
               ),
               Flexible(
                 child: Text(
-                  'อุณหภูมิ: ${vm.temperatureC.toStringAsFixed(1)} °C',
+                  'อุณหภูมิ ${vm.temperatureC.toStringAsFixed(1)} °C',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 11, color: AppTheme.mutedText),
